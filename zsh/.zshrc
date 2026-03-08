@@ -194,3 +194,14 @@ fi
 # envman
 # ==============================
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh" || true
+
+# ==============================
+# Bitwarden SSH Agent socket
+# ==============================
+if [[ -S "$HOME/snap/bitwarden/current/.bitwarden-ssh-agent.sock" ]]; then
+    export SSH_AUTH_SOCK="$HOME/snap/bitwarden/current/.bitwarden-ssh-agent.sock"
+elif [[ -S "$HOME/.bitwarden-ssh-agent.sock" ]]; then
+    export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
+elif [[ -S "/run/user/$(id -u)/bitwarden-ssh-agent.sock" ]]; then
+    export SSH_AUTH_SOCK="/run/user/$(id -u)/bitwarden-ssh-agent.sock"
+fi
