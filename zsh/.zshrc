@@ -2,8 +2,7 @@
 # PATH
 # ==============================
 export PATH="$HOME/.local/bin:$PATH"
-
-
+export LC_CTYPE=pt_BR.UTF-8
 # ==============================
 # TMUX auto start
 # ==============================
