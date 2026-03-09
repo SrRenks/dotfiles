@@ -6,7 +6,7 @@ set -euo pipefail
 # ==============================
 REQUIRED_COMMANDS=(
     zsh tmux nvim bat fzf zoxide lsd git curl wget xdg-open alacritty
-    openssh-client lazygit yazi
+    lazygit yazi
 )
 
 # ==============================
@@ -139,7 +139,6 @@ install_lazygit() {
             sudo pacman -S --noconfirm lazygit
             ;;
         *)
-            # Try cargo as fallback
             if command -v cargo &>/dev/null; then
                 cargo install lazygit
             else
@@ -227,32 +226,30 @@ check_optional() {
 main() {
     detect_distro
 
-    # Build package list based on distribution family
     local common_packages=(
-        zsh tmux neovim fzf zoxide lsd git curl wget openssh-client
+        zsh tmux neovim fzf zoxide lsd git curl wget
     )
 
     case "$DISTRO_FAMILY" in
         debian)
-            common_packages+=(bat xdg-utils alacritty build-essential cargo unzip)
+            common_packages+=(openssh-client bat xdg-utils alacritty build-essential cargo unzip)
             ;;
         redhat)
-            common_packages+=(bat xdg-utils alacritty gcc make cargo unzip)
+            common_packages+=(openssh-clients bat xdg-utils alacritty gcc make cargo unzip)
             ;;
         arch)
-            common_packages+=(bat xdg-utils alacritty base-devel cargo unzip)
+            common_packages+=(openssh bat xdg-utils alacritty base-devel rust unzip)
             ;;
         suse)
-            common_packages+=(bat xdg-utils alacritty gcc make cargo unzip)
+            common_packages+=(openssh bat xdg-utils alacritty gcc make cargo unzip)
             ;;
         alpine)
-            common_packages+=(bat xdg-utils alacritty build-base cargo unzip)
+            common_packages+=(openssh bat xdg-utils alacritty build-base cargo unzip)
             ;;
     esac
 
     install_packages "${common_packages[@]}"
 
-    # Install additional tools not always in repos
     install_lazygit
     install_yazi
 
