@@ -84,7 +84,6 @@ install_packages() {
         debian)
             sudo apt update
             sudo apt install -y "${packages[@]}"
-            
             if command -v batcat &>/dev/null && ! command -v bat &>/dev/null; then
                 sudo ln -sf "$(command -v batcat)" /usr/local/bin/bat
                 print_info "Created symlink batcat -> bat"
@@ -110,7 +109,7 @@ install_packages() {
 }
 
 # ==============================
-# Install lazygit
+# Install lazygit (if not available)
 # ==============================
 install_lazygit() {
     if command -v lazygit &>/dev/null; then
@@ -149,7 +148,7 @@ install_lazygit() {
 }
 
 # ==============================
-# Install yazi
+# Install yazi (if not available)
 # ==============================
 install_yazi() {
     if command -v yazi &>/dev/null; then
@@ -208,17 +207,25 @@ install_snap_and_bitwarden() {
         esac
 
         sudo systemctl enable --now snapd.socket
-        sudo ln -sf /var/lib/snapd/snap /snap
 
-        print_info "Waiting for snapd to initialize..."
-        sleep 5
+        print_info "Waiting for snapd to be ready..."
+        local max_attempts=30
+        local attempt=0
+        while ! snap version &>/dev/null; do
+            attempt=$((attempt+1))
+            if [[ $attempt -ge $max_attempts ]]; then
+                print_error "snapd did not become ready in time."
+                return 1
+            fi
+            sleep 2
+        done
+        print_info "snapd is ready."
     fi
 
-    # Install Bitwarden if not present
     if ! snap list 2>/dev/null | grep -q bitwarden; then
         print_info "Installing Bitwarden via snap..."
         sudo snap install bitwarden
-        sudo snap connect bitwarden:password-manager-service
+        sudo snap connect bitwarden:password-manager-service 2>/dev/null || true
     else
         print_info "Bitwarden already installed."
     fi
