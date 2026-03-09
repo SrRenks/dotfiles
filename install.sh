@@ -84,7 +84,7 @@ install_packages() {
         debian)
             sudo apt update
             sudo apt install -y "${packages[@]}"
-            # Special case: bat -> batcat symlink
+            
             if command -v batcat &>/dev/null && ! command -v bat &>/dev/null; then
                 sudo ln -sf "$(command -v batcat)" /usr/local/bin/bat
                 print_info "Created symlink batcat -> bat"
@@ -110,7 +110,7 @@ install_packages() {
 }
 
 # ==============================
-# Install lazygit (if not available)
+# Install lazygit
 # ==============================
 install_lazygit() {
     if command -v lazygit &>/dev/null; then
@@ -149,7 +149,7 @@ install_lazygit() {
 }
 
 # ==============================
-# Install yazi (if not available)
+# Install yazi
 # ==============================
 install_yazi() {
     if command -v yazi &>/dev/null; then
@@ -170,6 +170,58 @@ install_yazi() {
             fi
             ;;
     esac
+}
+
+# ==============================
+# Install snap and Bitwarden
+# ==============================
+install_snap_and_bitwarden() {
+    if command -v snap &>/dev/null; then
+        print_info "snap already installed."
+    else
+        print_info "Installing snapd..."
+        case "$DISTRO_FAMILY" in
+            debian)
+                sudo apt install -y snapd
+                ;;
+            redhat)
+                sudo dnf install -y snapd
+                ;;
+            arch)
+                if [[ ! -d "/tmp/snapd" ]]; then
+                    git clone https://aur.archlinux.org/snapd.git /tmp/snapd
+                fi
+                (cd /tmp/snapd && makepkg -si --noconfirm)
+                rm -rf /tmp/snapd
+                ;;
+            suse)
+                sudo zypper install -y snapd
+                ;;
+            alpine)
+                print_warn "snapd not available on Alpine. Skipping Bitwarden installation."
+                return
+                ;;
+            *)
+                print_warn "Unsupported distribution for snapd. Skipping Bitwarden."
+                return
+                ;;
+        esac
+
+        sudo systemctl enable --now snapd.socket
+        sudo ln -sf /var/lib/snapd/snap /snap
+
+        print_info "Waiting for snapd to initialize..."
+        sleep 5
+    fi
+
+    # Install Bitwarden if not present
+    if ! snap list 2>/dev/null | grep -q bitwarden; then
+        print_info "Installing Bitwarden via snap..."
+        sudo snap install bitwarden
+        sudo snap connect bitwarden:password-manager-service
+    else
+        print_info "Bitwarden already installed."
+    fi
 }
 
 # ==============================
@@ -252,6 +304,8 @@ main() {
 
     install_lazygit
     install_yazi
+
+    install_snap_and_bitwarden
 
     setup_tpm
     set_default_shell
