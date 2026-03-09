@@ -2,7 +2,6 @@
 # PATH
 # ==============================
 export PATH="$HOME/.local/bin:$PATH"
-export LC_CTYPE=pt_BR.UTF-8
 # ==============================
 # TMUX auto start
 # ==============================
@@ -70,9 +69,10 @@ export EDITOR="nvim"
 export VISUAL="nvim"
 export SUDO_EDITOR="nvim"
 export FCEDIT="nvim"
-
 export TERMINAL="alacritty"
-export BROWSER="com.brave.Browser"
+export LC_CTYPE=pt_BR.UTF-8
+export GTK_IM_MODULE=cedilla
+export QT_IM_MODULE=cedilla
 
 # ==============================
 # bat pager
