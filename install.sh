@@ -5,7 +5,7 @@ set -euo pipefail
 # Configuration
 # ==============================
 REQUIRED_COMMANDS=(
-    zsh tmux nvim bat fzf zoxide lsd git curl wget xdg-open alacritty
+    zsh tmux nvim bat fzf zoxide lsd git curl wget xdg-open alacritty stow wl-clipboard
     lazygit yazi
 )
 
@@ -230,22 +230,10 @@ install_snap_and_bw() {
         esac
 
         sudo systemctl enable --now snapd.socket
-
-        print_info "Waiting for snapd to be ready..."
-        local max_attempts=30
-        local attempt=0
-        while ! snap version &>/dev/null; do
-            attempt=$((attempt+1))
-            if [[ $attempt -ge $max_attempts ]]; then
-                print_error "snapd did not become ready in time."
-                return 1
-            fi
-            sleep 2
-        done
-        print_info "snapd is ready."
+        print_info "snapd enabled."
     fi
 
-    # Install Bitwarden CLI (bw) with classic confinement
+    # Install Bitwarden CLI (bw)
     if ! command -v bw &>/dev/null; then
         print_info "Installing Bitwarden CLI (bw) via snap..."
         sudo snap install bw --classic
@@ -263,9 +251,8 @@ install_sbit_agent() {
     else
         print_info "Installing s-bit-agent..."
         
-        # Ensure npm is available
         if ! command -v npm &>/dev/null; then
-            print_info "npm not found. Installing Node.js and npm..."
+            print_info "Installing Node.js and npm..."
             case "$DISTRO_FAMILY" in
                 debian)
                     sudo apt install -y nodejs npm
@@ -293,27 +280,14 @@ install_sbit_agent() {
             esac
         fi
 
-        # Install globally
         sudo npm install -g s-bit-agent
-
-        # Configure Bitwarden server (default is official)
-        s-bit-agent -- bw config server https://bitwarden.com || true
     fi
 
-    # Get the full path of s-bit-agent (after installation)
     local agent_path
-    if ! agent_path="$(which s-bit-agent 2>/dev/null)"; then
-        print_error "s-bit-agent not found in PATH after installation."
-        return 1
-    fi
+    agent_path="$(which s-bit-agent)"
+    mkdir -p "$HOME/.ssh" "$HOME/.config/systemd/user"
 
-    # Create necessary directories
-    mkdir -p "$HOME/.ssh"
-    mkdir -p "$HOME/.config/systemd/user"
-
-    # Create systemd user service
-    local service_file="$HOME/.config/systemd/user/s-bit-agent.service"
-    cat > "$service_file" <<EOF
+    cat > "$HOME/.config/systemd/user/s-bit-agent.service" <<EOF
 [Unit]
 Description=s-bit-agent (Bitwarden SSH agent)
 After=network.target
@@ -322,27 +296,22 @@ After=network.target
 Type=simple
 ExecStart=$agent_path daemon
 Restart=on-failure
-Environment="PATH=/usr/local/bin:/usr/bin:/bin:$PATH"
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:\$PATH"
 
 [Install]
 WantedBy=default.target
 EOF
 
-    # Reload systemd user daemon
     systemctl --user daemon-reload
+    systemctl --user enable --now s-bit-agent
+    print_info "s-bit-agent enabled and started."
 
-    # Add environment variable to .zshrc if not already present
+    # Add SSH_AUTH_SOCK to zshrc
     if ! grep -q "SSH_AUTH_SOCK.*s-bit-agent" ~/.zshrc 2>/dev/null; then
         echo '' >> ~/.zshrc
         echo '# s-bit-agent socket for Bitwarden SSH' >> ~/.zshrc
         echo 'export SSH_AUTH_SOCK="$HOME/.ssh/s-bit-agent.sock"' >> ~/.zshrc
-        print_info "Added SSH_AUTH_SOCK to ~/.zshrc"
     fi
-
-    print_info "s-bit-agent installed and systemd service created."
-    print_info "To start the agent now, run: systemctl --user start s-bit-agent"
-    print_info "To enable autostart: systemctl --user enable s-bit-agent"
-    print_info "Note: You must log in to Bitwarden CLI first: bw login"
 }
 
 # ==============================
@@ -382,56 +351,30 @@ set_default_shell() {
 }
 
 # ==============================
-# Check optional tools
-# ==============================
-check_optional() {
-    if command -v bw &>/dev/null; then
-        print_info "Bitwarden CLI is installed."
-    else
-        print_warn "Bitwarden CLI not found."
-    fi
-
-    if command -v s-bit-agent &>/dev/null; then
-        print_info "s-bit-agent is installed."
-        if [[ -S "$HOME/.ssh/s-bit-agent.sock" ]]; then
-            print_info "s-bit-agent socket found at ~/.ssh/s-bit-agent.sock"
-        else
-            print_warn "s-bit-agent socket not found. Ensure the service is running: systemctl --user start s-bit-agent"
-        fi
-    else
-        print_warn "s-bit-agent not installed. SSH agent will not be available."
-    fi
-
-    if [[ ! -f "$HOME/.config/alacritty/dracula.toml" ]]; then
-        print_warn "Alacritty Dracula theme not found. Ensure your dotfiles include it."
-    fi
-}
-
-# ==============================
 # Main
 # ==============================
 main() {
     detect_distro
 
     local common_packages=(
-        zsh tmux neovim fzf zoxide lsd git curl wget
+        zsh tmux neovim fzf zoxide lsd git curl wget stow wl-clipboard
     )
 
     case "$DISTRO_FAMILY" in
         debian)
-            common_packages+=(openssh-client bat xdg-utils alacritty build-essential cargo unzip)
+            common_packages+=(openssh-client bat xdg-utils alacritty build-essential cargo unzip jq nodejs npm)
             ;;
         redhat)
-            common_packages+=(openssh-clients bat xdg-utils alacritty gcc make cargo unzip)
+            common_packages+=(openssh-clients bat xdg-utils alacritty gcc make cargo unzip jq nodejs npm)
             ;;
         arch)
-            common_packages+=(openssh bat xdg-utils alacritty base-devel rust unzip)
+            common_packages+=(openssh bat xdg-utils alacritty base-devel rust unzip jq nodejs npm)
             ;;
         suse)
-            common_packages+=(openssh bat xdg-utils alacritty gcc make cargo unzip)
+            common_packages+=(openssh bat xdg-utils alacritty gcc make cargo unzip jq nodejs npm)
             ;;
         alpine)
-            common_packages+=(openssh bat xdg-utils alacritty build-base cargo unzip)
+            common_packages+=(openssh bat xdg-utils alacritty build-base cargo unzip jq nodejs npm)
             ;;
     esac
 
@@ -449,16 +392,12 @@ main() {
 
     setup_tpm
     set_default_shell
-    check_optional
 
     print_info "Installation complete!"
-    print_info "Important next steps:"
+    print_info "Next steps:"
     echo "  1. Log out and back in (or restart) to ensure shell and group changes take effect."
-    echo "  2. If you changed your default shell to zsh, start a new session."
-    echo "  3. Log in to Bitwarden CLI: bw login"
-    echo "  4. Start s-bit-agent: systemctl --user start s-bit-agent"
-    echo "  5. Enable it to start automatically: systemctl --user enable s-bit-agent"
-    echo "  6. Your SSH_AUTH_SOCK is already set in ~/.zshrc; after starting the agent, SSH will use Bitwarden."
+    echo "  2. Run 'bw login' to log into Bitwarden CLI."
+    echo "  3. Use 'stow' to apply your dotfiles after the install."
 }
 
 main
