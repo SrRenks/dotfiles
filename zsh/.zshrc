@@ -2,9 +2,7 @@
 # PATH
 # ==============================
 export PATH="$HOME/.local/bin:$PATH"
-export LC_CTYPE=pt_BR.UTF-8
-export GTK_IM_MODULE=cedilla
-export QT_IM_MODULE=cedilla
+
 # ==============================
 # TMUX auto start
 # ==============================
@@ -73,6 +71,7 @@ export VISUAL="nvim"
 export SUDO_EDITOR="nvim"
 export FCEDIT="nvim"
 export TERMINAL="alacritty"
+export SSH_AUTH_SOCK="$HOME/.ssh/s-bit-agent.sock"
 export LC_CTYPE=pt_BR.UTF-8
 export GTK_IM_MODULE=cedilla
 export QT_IM_MODULE=cedilla
@@ -193,57 +192,6 @@ if command -v curl >/dev/null; then
 fi
 
 # ==============================
-# Bitwarden SSH agent loader
-# ==============================
-function bw_ssh_load() {
-    if ! command -v bw &>/dev/null; then
-        echo "[WARN] bw CLI not found."
-        return 1
-    fi
-
-    if [[ -z "$BW_SESSION" ]]; then
-        echo "[INFO] Logging in to Bitwarden CLI..."
-        bw login --raw
-        export BW_SESSION
-    fi
-
-    # List all identities with ssh keys
-    local keys
-    keys=$(bw list items --session "$BW_SESSION" | jq -r '.[] | select(.type==2) | .fields[]? | select(.type==2) | .value')
-
-    if [[ -z "$keys" ]]; then
-        echo "[INFO] No SSH keys found in Bitwarden."
-        return 0
-    fi
-
-    # Start agent if not running
-    if [[ -z "$SSH_AUTH_SOCK" ]]; then
-        eval "$(s-bit-agent daemon)"
-        export SSH_AUTH_SOCK="$HOME/.ssh/s-bit-agent.sock"
-    fi
-
-    # Add each key to the agent
-    while IFS= read -r key; do
-        echo "$key" | ssh-add - &>/dev/null || true
-    done <<< "$keys"
-
-    echo "[INFO] Loaded SSH keys from Bitwarden."
-}
-
-# ==============================
 # envman
 # ==============================
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh" || true
-
-# ==============================
-# Bitwarden SSH Agent socket
-# ==============================
-if [[ -S "$HOME/snap/bitwarden/current/.bitwarden-ssh-agent.sock" ]]; then
-    export SSH_AUTH_SOCK="$HOME/snap/bitwarden/current/.bitwarden-ssh-agent.sock"
-elif [[ -S "$HOME/.bitwarden-ssh-agent.sock" ]]; then
-    export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
-elif [[ -S "/run/user/$(id -u)/bitwarden-ssh-agent.sock" ]]; then
-    export SSH_AUTH_SOCK="/run/user/$(id -u)/bitwarden-ssh-agent.sock"
-fi
-
-bw_ssh_load
