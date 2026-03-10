@@ -17,15 +17,20 @@ print_error() { echo -e "\033[0;31m[ERROR]\033[0m $1" >&3; }
 run_silent() {
     local desc="$1"
     shift
-    echo -n "➜ $desc... " >&3
-    if "$@" &>> "$LOG_FILE"; then
-        echo -e "\033[0;32mOK\033[0m" >&3
-        return 0
+    echo -n "$desc... "
+    local log_file=$(mktemp)
+    if "$@" &> "$log_file"; then
+        echo -e "\033[0;32mOK\033[0m"
+        rm -f "$log_file"
     else
         local exit_code=$?
-        echo -e "\033[0;31mFAILED\033[0m" >&3
-        echo "Error running: $*" >> "$LOG_FILE"
-        echo "Exit code: $exit_code" >> "$LOG_FILE"
+        echo -e "\033[0;31mFAILED\033[0m"
+        echo "Error running: $*"
+        echo "Exit code: $exit_code"
+        echo "--- Output ---"
+        cat "$log_file"
+        echo "--------------"
+        rm -f "$log_file"
         return $exit_code
     fi
 }
