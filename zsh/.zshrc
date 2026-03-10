@@ -71,10 +71,10 @@ export VISUAL="nvim"
 export SUDO_EDITOR="nvim"
 export FCEDIT="nvim"
 export TERMINAL="alacritty"
-export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"
 export LC_CTYPE=pt_BR.UTF-8
 export GTK_IM_MODULE=cedilla
 export QT_IM_MODULE=cedilla
+export SSH_AUTH_SOCK="$HOME/.ssh/s-bit-agent.sock"
 
 # ==============================
 # bat pager

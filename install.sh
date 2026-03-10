@@ -2,19 +2,45 @@
 set -euo pipefail
 
 # ==============================
+# Logging and silent execution
+# ==============================
+LOG_FILE="/tmp/install-$(date +%Y%m%d-%H%M%S).log"
+exec 3>&1 4>&2
+trap 'exec 2>&4 1>&3' EXIT
+
+print_info() { echo -e "\033[0;32m[INFO]\033[0m $1" >&3; }
+print_warn() { echo -e "\033[0;33m[WARN]\033[0m $1" >&3; }
+print_error() { echo -e "\033[0;31m[ERROR]\033[0m $1" >&3; }
+
+# Run a command silently, showing a status message
+# Usage: run_silent "description" command [args...]
+run_silent() {
+    local desc="$1"
+    shift
+    echo -n "➜ $desc... " >&3
+    if "$@" &>> "$LOG_FILE"; then
+        echo -e "\033[0;32mOK\033[0m" >&3
+        return 0
+    else
+        local exit_code=$?
+        echo -e "\033[0;31mFAILED\033[0m" >&3
+        echo "Error running: $*" >> "$LOG_FILE"
+        echo "Exit code: $exit_code" >> "$LOG_FILE"
+        return $exit_code
+    fi
+}
+
+run_interactive() {
+    "$@"
+}
+
+# ==============================
 # Configuration
 #===============================
 REQUIRED_COMMANDS=(
     zsh tmux nvim bat fzf zoxide lsd git curl wget xdg-open alacritty stow wl-clipboard
     lazygit yazi
 )
-
-# ==============================
-# Helper functions
-#===============================
-print_info() { echo -e "\033[0;32m[INFO]\033[0m $1"; }
-print_warn() { echo -e "\033[0;33m[WARN]\033[0m $1"; }
-print_error() { echo -e "\033[0;31m[ERROR]\033[0m $1"; }
 
 # ==============================
 # Distribution detection
@@ -57,21 +83,28 @@ detect_distro() {
 #===============================
 install_packages() {
     local packages=("$@")
-    print_info "Installing packages: ${packages[*]}"
+    print_info "Installing system packages: ${packages[*]}"
 
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt update
-            sudo apt install -y "${packages[@]}"
+            run_silent "Updating package lists" sudo apt update
+            run_silent "Installing packages" sudo apt install -y "${packages[@]}"
             if command -v batcat &>/dev/null && ! command -v bat &>/dev/null; then
-                sudo ln -sf "$(command -v batcat)" /usr/local/bin/bat
-                print_info "Created symlink batcat -> bat"
+                run_silent "Creating bat symlink" sudo ln -sf "$(command -v batcat)" /usr/local/bin/bat
             fi
             ;;
-        redhat) sudo dnf install -y "${packages[@]}" ;;
-        arch)   sudo pacman -S --noconfirm "${packages[@]}" ;;
-        suse)   sudo zypper install -y "${packages[@]}" ;;
-        alpine) sudo apk add "${packages[@]}" ;;
+        redhat)
+            run_silent "Installing packages" sudo dnf install -y "${packages[@]}"
+            ;;
+        arch)
+            run_silent "Installing packages" sudo pacman -S --noconfirm "${packages[@]}"
+            ;;
+        suse)
+            run_silent "Installing packages" sudo zypper install -y "${packages[@]}"
+            ;;
+        alpine)
+            run_silent "Installing packages" sudo apk add "${packages[@]}"
+            ;;
         *) print_error "Unsupported package manager"; exit 1 ;;
     esac
 }
@@ -85,9 +118,9 @@ install_yay() {
         return
     fi
     print_info "Installing yay from AUR..."
-    git clone https://aur.archlinux.org/yay.git /tmp/yay
-    (cd /tmp/yay && makepkg -si --noconfirm)
-    rm -rf /tmp/yay
+    run_silent "Cloning yay repository" git clone --depth=1 https://aur.archlinux.org/yay.git /tmp/yay
+    (cd /tmp/yay && run_silent "Building yay" makepkg -si --noconfirm)
+    run_silent "Cleaning up" rm -rf /tmp/yay
     print_info "yay installed successfully."
 }
 
@@ -100,25 +133,25 @@ install_lazygit() {
     case "$DISTRO_FAMILY" in
         debian|ubuntu)
             LAZYGIT_VERSION=$(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest | grep -Po '"tag_name": *"v\K[^"]*')
-            curl -Lo lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
-            tar xf lazygit.tar.gz lazygit
-            sudo install lazygit /usr/local/bin
-            rm -f lazygit lazygit.tar.gz
+            run_silent "Downloading lazygit v$LAZYGIT_VERSION" curl -Lo /tmp/lazygit.tar.gz "https://github.com/jesseduffield/lazygit/releases/download/v${LAZYGIT_VERSION}/lazygit_${LAZYGIT_VERSION}_Linux_x86_64.tar.gz"
+            run_silent "Extracting lazygit" tar xf /tmp/lazygit.tar.gz -C /tmp lazygit
+            run_silent "Installing lazygit" sudo install /tmp/lazygit /usr/local/bin
+            run_silent "Cleaning up" rm -f /tmp/lazygit /tmp/lazygit.tar.gz
             ;;
         redhat)
-            sudo dnf copr enable atim/lazygit -y
-            sudo dnf install lazygit -y
+            run_silent "Enabling COPR for lazygit" sudo dnf copr enable atim/lazygit -y
+            run_silent "Installing lazygit" sudo dnf install lazygit -y
             ;;
         arch)
             if command -v yay &>/dev/null; then
-                yay -S --noconfirm lazygit
+                run_silent "Installing lazygit via yay" yay -S --noconfirm lazygit
             else
-                sudo pacman -S --noconfirm lazygit
+                run_silent "Installing lazygit via pacman" sudo pacman -S --noconfirm lazygit
             fi
             ;;
         *)
             if command -v cargo &>/dev/null; then
-                cargo install lazygit
+                run_silent "Installing lazygit via cargo" cargo install lazygit
             else
                 print_warn "Cargo not available. Skipping lazygit."
             fi
@@ -135,14 +168,14 @@ install_yazi() {
     case "$DISTRO_FAMILY" in
         arch)
             if command -v yay &>/dev/null; then
-                yay -S --noconfirm yazi
+                run_silent "Installing yazi via yay" yay -S --noconfirm yazi
             else
-                sudo pacman -S --noconfirm yazi
+                run_silent "Installing yazi via pacman" sudo pacman -S --noconfirm yazi
             fi
             ;;
         *)
             if command -v cargo &>/dev/null; then
-                cargo install --locked yazi-fm
+                run_silent "Installing yazi via cargo" cargo install --locked yazi-fm
             else
                 print_warn "Cargo not available. Cannot install yazi."
             fi
@@ -151,73 +184,146 @@ install_yazi() {
 }
 
 # ==============================
-# Install snapd (if not available)
+# Install Node.js and npm
 # ==============================
-install_snapd() {
-    if command -v snap &>/dev/null; then
-        print_info "snapd already installed."
+install_nodejs_npm() {
+    if command -v node &>/dev/null && command -v npm &>/dev/null; then
+        print_info "Node.js and npm already installed."
         return
     fi
 
-    print_info "Installing snapd..."
+    print_info "Installing Node.js and npm..."
     case "$DISTRO_FAMILY" in
         debian)
-            sudo apt install -y snapd
+            run_silent "Adding NodeSource repository" curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
+            run_silent "Installing Node.js" sudo apt install -y nodejs
             ;;
         redhat)
-            sudo dnf install -y snapd
+            run_silent "Adding NodeSource repository" curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo -E bash -
+            run_silent "Installing Node.js" sudo dnf install -y nodejs
             ;;
         arch)
-            install_yay
-            yay -S --noconfirm snapd
+            run_silent "Installing Node.js and npm" sudo pacman -S --noconfirm nodejs npm
             ;;
         suse)
-            sudo zypper install -y snapd
+            run_silent "Installing Node.js and npm" sudo zypper install -y nodejs npm
             ;;
         alpine)
-            print_warn "snapd not available on Alpine. Skipping."
-            return 1
+            run_silent "Installing Node.js and npm" sudo apk add nodejs npm
             ;;
         *)
-            print_warn "Unsupported distribution for snapd. Skipping."
-            return 1
+            print_error "Cannot install Node.js automatically on this distro."
+            exit 1
             ;;
     esac
-
-    sudo systemctl enable --now snapd.socket
-
-    print_info "Waiting for snapd to be ready..."
-    local max_attempts=30
-    local attempt=0
-    while ! snap version &>/dev/null; do
-        attempt=$((attempt + 1))
-        if [[ $attempt -ge $max_attempts ]]; then
-            print_error "snapd failed to start after $max_attempts attempts."
-            return 1
-        fi
-        sleep 1
-    done
-    print_info "snapd is ready."
 }
 
 # ==============================
-# Install Bitwarden Desktop (via snap)
+# Install and configure s-bit-agent (Bitwarden CLI SSH agent)
 # ==============================
-install_bitwarden_desktop() {
-    if snap list 2>/dev/null | grep -q bitwarden; then
-        print_info "Bitwarden Desktop already installed."
-        return
+setup_bitwarden_agent() {
+    print_info "Setting up Bitwarden with s-bit-agent..."
+
+    install_nodejs_npm
+
+    if ! command -v bw &>/dev/null; then
+        run_silent "Installing Bitwarden CLI" sudo npm install -g @bitwarden/cli
+    else
+        print_info "Bitwarden CLI already installed."
     fi
 
-    if ! command -v snap &>/dev/null; then
-        install_snapd || return 1
+    if ! command -v s-bit-agent &>/dev/null; then
+        run_silent "Installing s-bit-agent" sudo npm install -g s-bit-agent
+    else
+        print_info "s-bit-agent already installed."
     fi
 
-    print_info "Installing Bitwarden Desktop via snap..."
-    sudo snap install bitwarden
+    local sock_line='export SSH_AUTH_SOCK="$HOME/.ssh/s-bit-agent.sock"'
+    if ! grep -q "s-bit-agent.sock" "$HOME/.zshrc" 2>/dev/null; then
+        echo "" >> "$HOME/.zshrc"
+        echo "# s-bit-agent SSH agent socket" >> "$HOME/.zshrc"
+        echo "$sock_line" >> "$HOME/.zshrc"
+        print_info "Added SSH_AUTH_SOCK export to ~/.zshrc"
+    else
+        print_info "SSH_AUTH_SOCK already configured in ~/.zshrc"
+    fi
 
-    print_info "Bitwarden Desktop installed successfully."
-    print_info "You can now launch it from your application menu."
+    if command -v systemctl &>/dev/null && systemctl --user list-units &>/dev/null 2>&1; then
+        local service_dir="$HOME/.config/systemd/user"
+        local service_file="$service_dir/s-bit-agent.service"
+        mkdir -p "$service_dir"
+
+        local agent_path
+        agent_path=$(command -v s-bit-agent)
+
+        cat > "$service_file" <<EOF
+[Unit]
+Description=s-bit-agent daemon for Bitwarden SSH agent
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=$agent_path daemon
+Restart=on-failure
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:$HOME/.npm-global/bin"
+
+[Install]
+WantedBy=default.target
+EOF
+
+        run_silent "Reloading systemd" systemctl --user daemon-reload
+        run_silent "Enabling s-bit-agent service" systemctl --user enable --now s-bit-agent.service
+    else
+        print_warn "systemd user services not available. You'll need to start s-bit-agent manually:"
+        echo "  s-bit-agent daemon &"
+        echo "Add this to your .zshrc or startup script to run automatically."
+    fi
+
+    echo "Do you want to configure your Bitwarden account now?"
+    echo "This will allow you to log in and unlock your vault so the SSH agent (s-bit-agent) can access your keys."
+    echo ""
+    echo -n "Proceed with login? (Y/n) "
+    read -r login_choice
+    if [[ -z "$login_choice" || "$login_choice" =~ ^[Yy]$ ]]; then
+        echo ""
+        echo -n "Do you use a self-hosted Bitwarden server? (y/N) "
+        read -r self_hosted
+
+        if [[ "$self_hosted" =~ ^[Yy]$ ]]; then
+            echo -n "Enter your server URL (e.g., https://bitwarden.example.com): "
+            read -r server_url
+            if [[ -n "$server_url" ]]; then
+                print_info "Configuring server..."
+                run_interactive s-bit-agent -- bw config server "$server_url"
+            else
+                print_warn "No URL provided. Skipping server configuration."
+            fi
+        fi
+
+        print_info "Logging in to Bitwarden (follow the prompts)..."
+        run_interactive s-bit-agent -- bw login
+
+        print_info "Login completed. You may want to unlock your vault now to test:"
+        echo -n "Unlock vault now? (Y/n) "
+        read -r unlock_choice
+        if [[ -z "$unlock_choice" || "$unlock_choice" =~ ^[Yy]$ ]]; then
+            run_interactive s-bit-agent -- bw unlock
+        fi
+
+        echo ""
+        print_info "Checking s-bit-agent daemon status:"
+        run_interactive s-bit-agent status || true
+
+        echo ""
+        print_info "Bitwarden setup finished. Your SSH agent is ready to use."
+        echo "You can now test it with: ssh-add -l"
+    else
+        print_info "Skipping login. You can do it later manually:"
+        echo "  s-bit-agent -- bw login"
+        echo "  s-bit-agent -- bw unlock"
+    fi
+
+    print_info "Bitwarden agent setup completed."
 }
 
 # ==============================
@@ -227,7 +333,7 @@ setup_tpm() {
     local tpm_path="$HOME/.tmux/plugins/tpm"
     if [[ ! -d "$tpm_path" ]]; then
         print_info "Cloning TPM..."
-        git clone https://github.com/tmux-plugins/tpm "$tpm_path"
+        run_silent "Cloning tpm" git clone --depth=1 https://github.com/tmux-plugins/tpm "$tpm_path"
     fi
     if [[ ! -f "$tpm_path/tpm" ]]; then
         print_error "TPM installation incomplete."
@@ -246,7 +352,7 @@ set_default_shell() {
         echo -n "Change default shell to zsh? (y/N) "
         read -r resp
         if [[ "$resp" =~ ^[Yy]$ ]]; then
-            chsh -s "$zsh_path"
+            run_silent "Changing default shell" chsh -s "$zsh_path"
             print_info "Default shell changed to zsh. Please log out and back in."
         fi
     else
@@ -282,29 +388,20 @@ main() {
     install_yazi
 
     echo ""
-    echo -n "Install Bitwarden Desktop (graphical app) for SSH key management? (Y/n) "
-    read -r install_bitwarden
-    if [[ ! "$install_bitwarden" =~ ^[Nn]$ ]]; then
-        install_bitwarden_desktop
+    echo "Do you want to use Bitwarden as your SSH agent (via s-bit-agent)?"
+    echo -n "This will install Node.js, Bitwarden CLI, and s-bit-agent. (Y/n) "
+    read -r use_bitwarden
+    if [[ -z "$use_bitwarden" || "$use_bitwarden" =~ ^[Yy]$ ]]; then
+        setup_bitwarden_agent
     else
-        print_info "Skipping Bitwarden Desktop installation."
+        print_info "Skipping Bitwarden SSH agent setup."
     fi
 
     setup_tpm
     set_default_shell
 
     print_info "Installation complete!"
-    if [[ ! "$install_bitwarden" =~ ^[Nn]$ ]]; then
-        echo ""
-        print_info "Bitwarden Desktop installed. To use it as SSH agent:"
-        echo "  1. Launch Bitwarden Desktop and log in."
-        echo "  2. Go to Settings → SSH Agent and enable it."
-        echo "  3. Add the following line to your ~/.zshrc (or dotfiles) to use the agent:"
-        echo '       export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"'
-        echo "  4. Restart your shell or run 'source ~/.zshrc'."
-    else
-        print_info "You can manually install Bitwarden later if needed."
-    fi
+    echo "Detailed log saved to: $LOG_FILE"
 }
 
 main
