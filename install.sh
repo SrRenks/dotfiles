@@ -260,65 +260,89 @@ install_snap_and_bw() {
 install_sbit_agent() {
     if command -v s-bit-agent &>/dev/null; then
         print_info "s-bit-agent already installed."
-        return
-    fi
-
-    print_info "Installing s-bit-agent..."
-    
-    # Ensure npm is available
-    if ! command -v npm &>/dev/null; then
-        print_info "npm not found. Installing Node.js and npm..."
-        case "$DISTRO_FAMILY" in
-            debian)
-                sudo apt install -y nodejs npm
-                ;;
-            redhat)
-                sudo dnf install -y nodejs npm
-                ;;
-            arch)
-                # Use yay if available, otherwise pacman
-                if command -v yay &>/dev/null; then
-                    yay -S --noconfirm nodejs npm
-                else
-                    sudo pacman -S --noconfirm nodejs npm
-                fi
-                ;;
-            suse)
-                sudo zypper install -y nodejs npm
-                ;;
-            alpine)
-                sudo apk add nodejs npm
-                ;;
-            *)
-                print_error "Cannot install npm on this distribution."
-                return 1
-                ;;
-        esac
-    fi
-
-    # Install globally
-    sudo npm install -g s-bit-agent
-
-    # Configure Bitwarden server (default is official)
-    s-bit-agent -- bw config server https://bitwarden.com || true
-
-    # Set up systemd user service for autostart
-    if [[ -d "$HOME/.config/systemd/user" ]] || mkdir -p "$HOME/.config/systemd/user"; then
-        s-bit-agent setup --type SystemdAutostartService
-        print_info "s-bit-agent systemd user service installed."
-        print_info "Start it now with: systemctl --user start s-bit-agent"
-        print_info "Enable for autostart: systemctl --user enable s-bit-agent"
     else
-        print_warn "Could not create systemd user directory. You'll need to start s-bit-agent manually."
+        print_info "Installing s-bit-agent..."
+        
+        # Ensure npm is available
+        if ! command -v npm &>/dev/null; then
+            print_info "npm not found. Installing Node.js and npm..."
+            case "$DISTRO_FAMILY" in
+                debian)
+                    sudo apt install -y nodejs npm
+                    ;;
+                redhat)
+                    sudo dnf install -y nodejs npm
+                    ;;
+                arch)
+                    if command -v yay &>/dev/null; then
+                        yay -S --noconfirm nodejs npm
+                    else
+                        sudo pacman -S --noconfirm nodejs npm
+                    fi
+                    ;;
+                suse)
+                    sudo zypper install -y nodejs npm
+                    ;;
+                alpine)
+                    sudo apk add nodejs npm
+                    ;;
+                *)
+                    print_error "Cannot install npm on this distribution."
+                    return 1
+                    ;;
+            esac
+        fi
+
+        # Install globally
+        sudo npm install -g s-bit-agent
+
+        # Configure Bitwarden server (default is official)
+        s-bit-agent -- bw config server https://bitwarden.com || true
     fi
 
-    # Add environment variable to .zshrc
+    # Get the full path of s-bit-agent (after installation)
+    local agent_path
+    if ! agent_path="$(which s-bit-agent 2>/dev/null)"; then
+        print_error "s-bit-agent not found in PATH after installation."
+        return 1
+    fi
+
+    # Create necessary directories
+    mkdir -p "$HOME/.ssh"
+    mkdir -p "$HOME/.config/systemd/user"
+
+    # Create systemd user service
+    local service_file="$HOME/.config/systemd/user/s-bit-agent.service"
+    cat > "$service_file" <<EOF
+[Unit]
+Description=s-bit-agent (Bitwarden SSH agent)
+After=network.target
+
+[Service]
+Type=simple
+ExecStart=$agent_path daemon
+Restart=on-failure
+Environment="PATH=/usr/local/bin:/usr/bin:/bin:$PATH"
+
+[Install]
+WantedBy=default.target
+EOF
+
+    # Reload systemd user daemon
+    systemctl --user daemon-reload
+
+    # Add environment variable to .zshrc if not already present
     if ! grep -q "SSH_AUTH_SOCK.*s-bit-agent" ~/.zshrc 2>/dev/null; then
         echo '' >> ~/.zshrc
         echo '# s-bit-agent socket for Bitwarden SSH' >> ~/.zshrc
         echo 'export SSH_AUTH_SOCK="$HOME/.ssh/s-bit-agent.sock"' >> ~/.zshrc
         print_info "Added SSH_AUTH_SOCK to ~/.zshrc"
     fi
+
+    print_info "s-bit-agent installed and systemd service created."
+    print_info "To start the agent now, run: systemctl --user start s-bit-agent"
+    print_info "To enable autostart: systemctl --user enable s-bit-agent"
+    print_info "Note: You must log in to Bitwarden CLI first: bw login"
 }
 
 # ==============================
