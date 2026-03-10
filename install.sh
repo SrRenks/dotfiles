@@ -109,6 +109,24 @@ install_packages() {
 }
 
 # ==============================
+# Install yay (AUR helper) for Arch-based systems
+# ==============================
+install_yay() {
+    if command -v yay &>/dev/null; then
+        print_info "yay already installed."
+        return
+    fi
+
+    print_info "Installing yay from AUR..."
+    if [[ ! -d "/tmp/yay" ]]; then
+        git clone https://aur.archlinux.org/yay.git /tmp/yay
+    fi
+    (cd /tmp/yay && makepkg -si --noconfirm)
+    rm -rf /tmp/yay
+    print_info "yay installed successfully."
+}
+
+# ==============================
 # Install lazygit (if not available)
 # ==============================
 install_lazygit() {
@@ -135,7 +153,11 @@ install_lazygit() {
             sudo dnf install lazygit -y
             ;;
         arch)
-            sudo pacman -S --noconfirm lazygit
+            if command -v yay &>/dev/null; then
+                yay -S --noconfirm lazygit
+            else
+                sudo pacman -S --noconfirm lazygit
+            fi
             ;;
         *)
             if command -v cargo &>/dev/null; then
@@ -159,7 +181,11 @@ install_yazi() {
     print_info "Installing yazi..."
     case "$DISTRO_FAMILY" in
         arch)
-            sudo pacman -S --noconfirm yazi
+            if command -v yay &>/dev/null; then
+                yay -S --noconfirm yazi
+            else
+                sudo pacman -S --noconfirm yazi
+            fi
             ;;
         *)
             if command -v cargo &>/dev/null; then
@@ -172,9 +198,9 @@ install_yazi() {
 }
 
 # ==============================
-# Install snap and Bitwarden
+# Install snapd and Bitwarden CLI (bw)
 # ==============================
-install_snap_and_bitwarden() {
+install_snap_and_bw() {
     if command -v snap &>/dev/null; then
         print_info "snap already installed."
     else
@@ -187,11 +213,8 @@ install_snap_and_bitwarden() {
                 sudo dnf install -y snapd
                 ;;
             arch)
-                if [[ ! -d "/tmp/snapd" ]]; then
-                    git clone https://aur.archlinux.org/snapd.git /tmp/snapd
-                fi
-                (cd /tmp/snapd && makepkg -si --noconfirm)
-                rm -rf /tmp/snapd
+                install_yay
+                yay -S --noconfirm snapd
                 ;;
             suse)
                 sudo zypper install -y snapd
@@ -222,12 +245,79 @@ install_snap_and_bitwarden() {
         print_info "snapd is ready."
     fi
 
-    if ! snap list 2>/dev/null | grep -q bitwarden; then
-        print_info "Installing Bitwarden via snap..."
-        sudo snap install bitwarden
-        sudo snap connect bitwarden:password-manager-service 2>/dev/null || true
+    # Install Bitwarden CLI (bw) with classic confinement
+    if ! command -v bw &>/dev/null; then
+        print_info "Installing Bitwarden CLI (bw) via snap..."
+        sudo snap install bw --classic
     else
-        print_info "Bitwarden already installed."
+        print_info "Bitwarden CLI already installed."
+    fi
+}
+
+# ==============================
+# Install s-bit-agent (SSH agent for Bitwarden)
+# ==============================
+install_sbit_agent() {
+    if command -v s-bit-agent &>/dev/null; then
+        print_info "s-bit-agent already installed."
+        return
+    fi
+
+    print_info "Installing s-bit-agent..."
+    
+    # Ensure npm is available
+    if ! command -v npm &>/dev/null; then
+        print_info "npm not found. Installing Node.js and npm..."
+        case "$DISTRO_FAMILY" in
+            debian)
+                sudo apt install -y nodejs npm
+                ;;
+            redhat)
+                sudo dnf install -y nodejs npm
+                ;;
+            arch)
+                # Use yay if available, otherwise pacman
+                if command -v yay &>/dev/null; then
+                    yay -S --noconfirm nodejs npm
+                else
+                    sudo pacman -S --noconfirm nodejs npm
+                fi
+                ;;
+            suse)
+                sudo zypper install -y nodejs npm
+                ;;
+            alpine)
+                sudo apk add nodejs npm
+                ;;
+            *)
+                print_error "Cannot install npm on this distribution."
+                return 1
+                ;;
+        esac
+    fi
+
+    # Install globally
+    sudo npm install -g s-bit-agent
+
+    # Configure Bitwarden server (default is official)
+    s-bit-agent -- bw config server https://bitwarden.com || true
+
+    # Set up systemd user service for autostart
+    if [[ -d "$HOME/.config/systemd/user" ]] || mkdir -p "$HOME/.config/systemd/user"; then
+        s-bit-agent setup --type SystemdAutostartService
+        print_info "s-bit-agent systemd user service installed."
+        print_info "Start it now with: systemctl --user start s-bit-agent"
+        print_info "Enable for autostart: systemctl --user enable s-bit-agent"
+    else
+        print_warn "Could not create systemd user directory. You'll need to start s-bit-agent manually."
+    fi
+
+    # Add environment variable to .zshrc
+    if ! grep -q "SSH_AUTH_SOCK.*s-bit-agent" ~/.zshrc 2>/dev/null; then
+        echo '' >> ~/.zshrc
+        echo '# s-bit-agent socket for Bitwarden SSH' >> ~/.zshrc
+        echo 'export SSH_AUTH_SOCK="$HOME/.ssh/s-bit-agent.sock"' >> ~/.zshrc
+        print_info "Added SSH_AUTH_SOCK to ~/.zshrc"
     fi
 }
 
@@ -260,7 +350,7 @@ set_default_shell() {
         read -r resp
         if [[ "$resp" =~ ^[Yy]$ ]]; then
             chsh -s "$zsh_path"
-            print_info "Default shell changed to zsh. Log out and back in."
+            print_info "Default shell changed to zsh. Please log out and back in."
         fi
     else
         print_info "zsh is already the default shell."
@@ -271,9 +361,23 @@ set_default_shell() {
 # Check optional tools
 # ==============================
 check_optional() {
-    if ! command -v bw &>/dev/null; then
-        print_warn "Bitwarden CLI not found. SSH agent integration may be missing."
+    if command -v bw &>/dev/null; then
+        print_info "Bitwarden CLI is installed."
+    else
+        print_warn "Bitwarden CLI not found."
     fi
+
+    if command -v s-bit-agent &>/dev/null; then
+        print_info "s-bit-agent is installed."
+        if [[ -S "$HOME/.ssh/s-bit-agent.sock" ]]; then
+            print_info "s-bit-agent socket found at ~/.ssh/s-bit-agent.sock"
+        else
+            print_warn "s-bit-agent socket not found. Ensure the service is running: systemctl --user start s-bit-agent"
+        fi
+    else
+        print_warn "s-bit-agent not installed. SSH agent will not be available."
+    fi
+
     if [[ ! -f "$HOME/.config/alacritty/dracula.toml" ]]; then
         print_warn "Alacritty Dracula theme not found. Ensure your dotfiles include it."
     fi
@@ -309,16 +413,28 @@ main() {
 
     install_packages "${common_packages[@]}"
 
+    if [[ "$DISTRO_FAMILY" == "arch" ]]; then
+        install_yay
+    fi
+
     install_lazygit
     install_yazi
 
-    install_snap_and_bitwarden
+    install_snap_and_bw
+    install_sbit_agent
 
     setup_tpm
     set_default_shell
     check_optional
 
-    print_info "Installation complete! Run 'source ~/.zshrc' or restart your terminal."
+    print_info "Installation complete!"
+    print_info "Important next steps:"
+    echo "  1. Log out and back in (or restart) to ensure shell and group changes take effect."
+    echo "  2. If you changed your default shell to zsh, start a new session."
+    echo "  3. Log in to Bitwarden CLI: bw login"
+    echo "  4. Start s-bit-agent: systemctl --user start s-bit-agent"
+    echo "  5. Enable it to start automatically: systemctl --user enable s-bit-agent"
+    echo "  6. Your SSH_AUTH_SOCK is already set in ~/.zshrc; after starting the agent, SSH will use Bitwarden."
 }
 
 main
