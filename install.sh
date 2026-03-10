@@ -201,11 +201,11 @@ install_snapd() {
 }
 
 # ==============================
-# Install Bitwarden CLI (bw) via snap
+# Install Bitwarden Desktop (via snap)
 # ==============================
-install_bw_cli() {
-    if command -v bw &>/dev/null; then
-        print_info "Bitwarden CLI already installed."
+install_bitwarden_desktop() {
+    if snap list 2>/dev/null | grep -q bitwarden; then
+        print_info "Bitwarden Desktop already installed."
         return
     fi
 
@@ -213,92 +213,11 @@ install_bw_cli() {
         install_snapd || return 1
     fi
 
-    print_info "Installing Bitwarden CLI (bw) via snap..."
-    sudo snap install bw --classic
+    print_info "Installing Bitwarden Desktop via snap..."
+    sudo snap install bitwarden
 
-    print_info "Waiting for bw command to become available..."
-    local max_attempts=30
-    local attempt=0
-    while ! command -v bw &>/dev/null; do
-        attempt=$((attempt + 1))
-        if [[ $attempt -ge $max_attempts ]]; then
-            print_warn "bw installed but not found in PATH after $max_attempts seconds."
-            print_warn "You may need to log out and back in, or add /snap/bin to your PATH."
-            return 0
-        fi
-        sleep 1
-    done
-    print_info "Bitwarden CLI installed successfully."
-}
-
-# ==============================
-# Install s-bit-agent (SSH agent for Bitwarden personal)
-#===============================
-install_sbit_agent() {
-    if command -v s-bit-agent &>/dev/null; then
-        print_info "s-bit-agent already installed."
-    else
-        print_info "Installing s-bit-agent..."
-        # Ensure npm
-        if ! command -v npm &>/dev/null; then
-            print_info "npm not found. Installing Node.js and npm..."
-            case "$DISTRO_FAMILY" in
-                debian) sudo apt install -y nodejs npm ;;
-                redhat) sudo dnf install -y nodejs npm ;;
-                arch)
-                    if command -v yay &>/dev/null; then
-                        yay -S --noconfirm nodejs npm
-                    else
-                        sudo pacman -S --noconfirm nodejs npm
-                    fi
-                    ;;
-                suse)   sudo zypper install -y nodejs npm ;;
-                alpine) sudo apk add nodejs npm ;;
-                *) print_error "Cannot install npm"; return 1 ;;
-            esac
-        fi
-        sudo npm install -g s-bit-agent
-    fi
-
-    local agent_path
-    agent_path="$(which s-bit-agent)"
-    mkdir -p "$HOME/.ssh" "$HOME/.config/systemd/user"
-
-    cat > "$HOME/.config/systemd/user/s-bit-agent.service" <<EOF
-[Unit]
-Description=s-bit-agent (Bitwarden SSH agent)
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=$agent_path daemon
-Restart=on-failure
-Environment="PATH=/usr/local/bin:/usr/bin:/bin:$HOME/.local/bin"
-
-[Install]
-WantedBy=default.target
-EOF
-
-    systemctl --user daemon-reload
-    systemctl --user enable s-bit-agent
-    systemctl --user start s-bit-agent
-
-    sleep 2
-    if systemctl --user is-active s-bit-agent &>/dev/null; then
-        print_info "s-bit-agent service started successfully."
-    else
-        print_warn "s-bit-agent service failed to start. Check logs: journalctl --user -u s-bit-agent"
-    fi
-
-    print_warn "IMPORTANT: Add the following line to your ~/.zshrc (or to your dotfiles .zshrc and re-stow):"
-    echo '  export SSH_AUTH_SOCK="$HOME/.ssh/s-bit-agent.sock"'
-    echo ""
-    print_info "s-bit-agent installed and configured."
-    print_info "Next steps:"
-    echo "  1. Log in to Bitwarden CLI: bw login"
-    echo "  2. Unlock your vault: bw unlock (export the session key)"
-    echo "  3. The agent will automatically use your SSH keys from Bitwarden."
-    echo "  4. Test with: ssh-add -l"
+    print_info "Bitwarden Desktop installed successfully."
+    print_info "You can now launch it from your application menu."
 }
 
 # ==============================
@@ -363,13 +282,12 @@ main() {
     install_yazi
 
     echo ""
-    echo -n "Install Bitwarden CLI and s-bit-agent for SSH key management? (Y/n) "
+    echo -n "Install Bitwarden Desktop (graphical app) for SSH key management? (Y/n) "
     read -r install_bitwarden
     if [[ ! "$install_bitwarden" =~ ^[Nn]$ ]]; then
-        install_bw_cli
-        install_sbit_agent
+        install_bitwarden_desktop
     else
-        print_info "Skipping Bitwarden SSH agent setup."
+        print_info "Skipping Bitwarden Desktop installation."
     fi
 
     setup_tpm
@@ -377,8 +295,13 @@ main() {
 
     print_info "Installation complete!"
     if [[ ! "$install_bitwarden" =~ ^[Nn]$ ]]; then
-        print_info "Reminder: Add the SSH_AUTH_SOCK line to your .zshrc (as shown above)."
-        print_info "Then run 'bw login' and 'bw unlock' to start using s-bit-agent."
+        echo ""
+        print_info "Bitwarden Desktop installed. To use it as SSH agent:"
+        echo "  1. Launch Bitwarden Desktop and log in."
+        echo "  2. Go to Settings → SSH Agent and enable it."
+        echo "  3. Add the following line to your ~/.zshrc (or dotfiles) to use the agent:"
+        echo '       export SSH_AUTH_SOCK="$HOME/.bitwarden-ssh-agent.sock"'
+        echo "  4. Restart your shell or run 'source ~/.zshrc'."
     else
         print_info "You can manually install Bitwarden later if needed."
     fi
