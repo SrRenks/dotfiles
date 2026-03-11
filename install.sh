@@ -662,8 +662,12 @@ set_default_shell() {
         echo -n "Change default shell to zsh? (y/N) "
         read -r resp
         if [[ "$resp" =~ ^[Yy]$ ]]; then
-            run_silent "Changing default shell" chsh -s "$zsh_path"
-            print_info "Default shell changed to zsh. Please log out and back in."
+            print_info "Changing default shell to zsh (you may be prompted for your password)..."
+            if run_interactive chsh -s "$zsh_path"; then
+                print_info "Default shell changed to zsh. Please log out and back in."
+            else
+                print_error "Failed to change shell. You may need to run 'chsh -s $zsh_path' manually."
+            fi
         fi
     else
         print_info "zsh is already the default shell."
