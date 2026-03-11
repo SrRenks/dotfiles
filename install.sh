@@ -345,141 +345,6 @@ install_yazi() {
 # ==============================
 install_rbw() {
     if command -v rbw &>/dev/null; then
-        return 0
-    fi
-
-    print_info "Installing rbw (Bitwarden CLI with SSH agent)..."
-
-    case "$DISTRO_FAMILY" in
-        debian|ubuntu)
-            run_silent "Installing pinentry-tty" sudo apt install -y pinentry-tty
-            ;;
-        redhat)
-            run_silent "Installing pinentry" sudo dnf install -y pinentry
-            ;;
-        arch)
-            run_silent "Installing pinentry" sudo pacman -S --noconfirm pinentry
-            ;;
-        suse)
-            run_silent "Installing pinentry" sudo zypper install -y pinentry
-            ;;
-        alpine)
-            run_silent "Installing pinentry" sudo apk add pinentry
-            ;;
-        *)
-            print_warn "Please ensure pinentry-tty is installed manually."
-            ;;
-    esac
-
-    if ! command -v pinentry-tty &>/dev/null; then
-        print_error "pinentry-tty not found after installation. Aborting."
-        return 1
-    fi
-
-    case "$DISTRO_FAMILY" in
-        arch)
-            run_silent "Installing rbw via pacman" sudo pacman -S --noconfirm rbw
-            ;;
-        debian|ubuntu)
-            if command -v snap &>/dev/null; then
-                if run_silent "Installing rbw via snap" sudo snap install rbw; then
-                    print_info "rbw installed via snap."
-                    return 0
-                else
-                    print_warn "Snap installation failed (rbw may not be available in snap), trying apt..."
-                fi
-            fi
-
-            if sudo apt install -y rbw &>/dev/null; then
-                print_info "rbw installed via apt."
-                return 0
-            else
-                print_warn "rbw not found in apt repositories. Checking cargo..."
-            fi
-
-            if command -v cargo &>/dev/null; then
-                local cargo_version
-                cargo_version=$(cargo --version | awk '{print $2}')
-                local min_version="1.70.0"
-                if [[ "$(printf '%s\n' "$cargo_version" "$min_version" | sort -V | head -n1)" == "$min_version" ]]; then
-                    print_info "Attempting installation via cargo (this may take a while)..."
-                    if run_silent "Installing rbw via cargo" cargo install --locked rbw; then
-                        print_info "rbw installed successfully via cargo."
-                        return 0
-                    else
-                        print_error "cargo installation failed."
-                        return 1
-                    fi
-                else
-                    print_error "Cargo version $cargo_version is too old to install rbw (needs >= 1.70)."
-                    echo ""
-                    echo "You can install rustup to get a modern Rust toolchain:"
-                    echo "  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
-                    echo "After that, restart your shell and run this script again."
-                    echo -n "Install rustup now? (y/N) "
-                    read -r install_rustup
-                    if [[ "$install_rustup" =~ ^[Yy]$ ]]; then
-                        print_info "Installing rustup..."
-                        if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
-                            print_info "rustup installed. Please restart your shell and re-run the script."
-                            exit 0
-                        else
-                            print_error "rustup installation failed."
-                            return 1
-                        fi
-                    else
-                        echo "Skipping rustup. You can manually install rbw later with:"
-                        echo "  cargo install --locked rbw"
-                        return 1
-                    fi
-                fi
-            else
-                print_error "No suitable installation method found for rbw."
-                return 1
-            fi
-            ;;
-        redhat)
-            if sudo dnf install -y rbw &>/dev/null; then
-                print_info "rbw installed via dnf."
-                return 0
-            else
-                print_warn "rbw not found in dnf repositories. Falling back to cargo..."
-                if command -v cargo &>/dev/null; then
-                    run_silent "Installing rbw via cargo" cargo install --locked rbw
-                else
-                    print_error "Cargo not available. Cannot install rbw."
-                    return 1
-                fi
-            fi
-            ;;
-        alpine)
-            run_silent "Installing rbw via apk" sudo apk add rbw
-            ;;
-        suse)
-            if command -v cargo &>/dev/null; then
-                run_silent "Installing rbw via cargo" cargo install --locked rbw
-            else
-                print_error "Cargo not available. Cannot install rbw."
-                return 1
-            fi
-            ;;
-        *)
-            if command -v cargo &>/dev/null; then
-                run_silent "Installing rbw via cargo" cargo install --locked rbw
-            else
-                print_error "Cargo not available. Cannot install rbw."
-                return 1
-            fi
-            ;;
-    esac
-}
-
-# ==============================
-# Install rbw (Bitwarden CLI with agent) for any distro
-# ==============================
-install_rbw() {
-    if command -v rbw &>/dev/null; then
-        # Testa se o binário realmente funciona
         if rbw --version &>/dev/null; then
             return 0
         else
@@ -490,7 +355,6 @@ install_rbw() {
 
     print_info "Installing rbw (Bitwarden CLI with SSH agent)..."
 
-    # Garantir pinentry-tty
     case "$DISTRO_FAMILY" in
         debian|ubuntu)
             run_silent "Installing pinentry-tty" sudo apt install -y pinentry-tty
@@ -522,7 +386,6 @@ install_rbw() {
             run_silent "Installing rbw via pacman" sudo pacman -S --noconfirm rbw
             ;;
         debian|ubuntu)
-            # 1. Tenta via snap
             if command -v snap &>/dev/null; then
                 if run_silent "Installing rbw via snap" sudo snap install rbw; then
                     print_info "rbw installed via snap."
@@ -532,7 +395,6 @@ install_rbw() {
                 fi
             fi
 
-            # 2. Tenta via apt
             if sudo apt install -y rbw &>/dev/null; then
                 print_info "rbw installed via apt."
                 return 0
@@ -540,160 +402,12 @@ install_rbw() {
                 print_warn "rbw not found in apt repositories. Trying cargo..."
             fi
 
-            # 3. Tenta via cargo
             if command -v cargo &>/dev/null; then
                 local cargo_version
                 cargo_version=$(cargo --version | awk '{print $2}')
                 local min_version="1.70.0"
                 if [[ "$(printf '%s\n' "$cargo_version" "$min_version" | sort -V | head -n1)" == "$min_version" ]]; then
                     print_info "Installing rbw via cargo (this may take a while)..."
-                    # Limpa o cache e força reinstalação
-                    run_silent "Cleaning cargo cache" cargo cache clean &>/dev/null || true
-                    if run_silent "Installing rbw via cargo" cargo install --force --locked rbw; then
-                        print_info "rbw installed successfully via cargo."
-                        return 0
-                    else
-                        print_error "cargo installation failed."
-                        return 1
-                    fi
-                else
-                    print_error "Cargo version $cargo_version is too old to install rbw (needs >= 1.70)."
-                    echo ""
-                    echo "You can install rustup to get a modern Rust toolchain:"
-                    echo "  curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y"
-                    echo "After that, restart your shell and run this script again."
-                    echo -n "Install rustup now? (y/N) "
-                    read -r install_rustup
-                    if [[ "$install_rustup" =~ ^[Yy]$ ]]; then
-                        print_info "Installing rustup..."
-                        if curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y; then
-                            print_info "rustup installed. Please restart your shell and re-run the script."
-                            exit 0
-                        else
-                            print_error "rustup installation failed."
-                            return 1
-                        fi
-                    else
-                        echo "Skipping rustup. You can manually install rbw later with:"
-                        echo "  cargo install --locked rbw"
-                        return 1
-                    fi
-                fi
-            else
-                print_error "No suitable installation method found for rbw."
-                return 1
-            fi
-            ;;
-        redhat)
-            if sudo dnf install -y rbw &>/dev/null; then
-                print_info "rbw installed via dnf."
-                return 0
-            else
-                print_warn "rbw not found in dnf repositories. Falling back to cargo..."
-                if command -v cargo &>/dev/null; then
-                    run_silent "Installing rbw via cargo" cargo install --locked rbw
-                else
-                    print_error "Cargo not available. Cannot install rbw."
-                    return 1
-                fi
-            fi
-            ;;
-        alpine)
-            run_silent "Installing rbw via apk" sudo apk add rbw
-            ;;
-        suse)
-            if command -v cargo &>/dev/null; then
-                run_silent "Installing rbw via cargo" cargo install --locked rbw
-            else
-                print_error "Cargo not available. Cannot install rbw."
-                return 1
-            fi
-            ;;
-        *)
-            if command -v cargo &>/dev/null; then
-                run_silent "Installing rbw via cargo" cargo install --locked rbw
-            else
-                print_error "Cargo not available. Cannot install rbw."
-                return 1
-            fi
-            ;;
-    esac
-}
-
-# ==============================
-# Install rbw (Bitwarden CLI with agent) for any distro
-# ==============================
-install_rbw() {
-    if command -v rbw &>/dev/null; then
-        # Testa se o binário realmente funciona
-        if rbw --version &>/dev/null; then
-            return 0
-        else
-            print_warn "Existing rbw binary is broken. Removing and reinstalling..."
-            rm -f "$(command -v rbw)"
-        fi
-    fi
-
-    print_info "Installing rbw (Bitwarden CLI with SSH agent)..."
-
-    # Garantir pinentry-tty
-    case "$DISTRO_FAMILY" in
-        debian|ubuntu)
-            run_silent "Installing pinentry-tty" sudo apt install -y pinentry-tty
-            ;;
-        redhat)
-            run_silent "Installing pinentry" sudo dnf install -y pinentry
-            ;;
-        arch)
-            run_silent "Installing pinentry" sudo pacman -S --noconfirm pinentry
-            ;;
-        suse)
-            run_silent "Installing pinentry" sudo zypper install -y pinentry
-            ;;
-        alpine)
-            run_silent "Installing pinentry" sudo apk add pinentry
-            ;;
-        *)
-            print_warn "Please ensure pinentry-tty is installed manually."
-            ;;
-    esac
-
-    if ! command -v pinentry-tty &>/dev/null; then
-        print_error "pinentry-tty not found after installation. Aborting."
-        return 1
-    fi
-
-    case "$DISTRO_FAMILY" in
-        arch)
-            run_silent "Installing rbw via pacman" sudo pacman -S --noconfirm rbw
-            ;;
-        debian|ubuntu)
-            # 1. Tenta via snap
-            if command -v snap &>/dev/null; then
-                if run_silent "Installing rbw via snap" sudo snap install rbw; then
-                    print_info "rbw installed via snap."
-                    return 0
-                else
-                    print_warn "Snap installation failed (rbw may not be available in snap), trying apt..."
-                fi
-            fi
-
-            # 2. Tenta via apt
-            if sudo apt install -y rbw &>/dev/null; then
-                print_info "rbw installed via apt."
-                return 0
-            else
-                print_warn "rbw not found in apt repositories. Trying cargo..."
-            fi
-
-            # 3. Tenta via cargo
-            if command -v cargo &>/dev/null; then
-                local cargo_version
-                cargo_version=$(cargo --version | awk '{print $2}')
-                local min_version="1.70.0"
-                if [[ "$(printf '%s\n' "$cargo_version" "$min_version" | sort -V | head -n1)" == "$min_version" ]]; then
-                    print_info "Installing rbw via cargo (this may take a while)..."
-                    # Força reinstalação com --force
                     if run_silent "Installing rbw via cargo" cargo install --force --locked rbw; then
                         print_info "rbw installed successfully via cargo."
                         return 0
@@ -771,44 +485,24 @@ install_rbw() {
 setup_rbw() {
     print_info "Setting up rbw (Bitwarden CLI with SSH agent)..."
 
-    # Garantir diretório de configuração e arquivo vazio
     mkdir -p "$HOME/.config/rbw"
-    touch "$HOME/.config/rbw/config.toml"
 
-    # Função auxiliar para verificar se rbw está funcional
-    check_rbw() {
-        command -v rbw &>/dev/null && rbw --version &>/dev/null
-    }
-
-    # Se rbw não estiver instalado ou não funcionar, instale
-    if ! check_rbw; then
-        if command -v rbw &>/dev/null; then
-            print_warn "Existing rbw binary seems broken. Reinstalling..."
-            # Remove o binário antigo (opcional)
-            rm -f "$(command -v rbw)" 2>/dev/null || true
-        fi
+    if ! command -v rbw &>/dev/null; then
         install_rbw || return 1
-        # Verificar novamente após instalação
-        if ! check_rbw; then
-            print_error "rbw installation failed or binary still not working."
-            echo "Please try installing manually:"
-            echo "  cargo install --force --locked rbw"
-            echo "or via snap: sudo snap install rbw"
-            return 1
-        fi
     fi
 
-    # Obter caminho completo do rbw
     local rbw_path
     rbw_path=$(command -v rbw)
+    if ! "$rbw_path" --version &>/dev/null; then
+        print_error "rbw binary at $rbw_path is not executable or broken."
+        return 1
+    fi
 
-    # Verificar pinentry-tty
     if ! command -v pinentry-tty &>/dev/null; then
         print_error "pinentry-tty not found in PATH. Please ensure it's installed."
         return 1
     fi
 
-    # Configurar pinentry (agora com diretório criado)
     run_silent "Setting pinentry to pinentry-tty" "$rbw_path" config set pinentry pinentry-tty
 
     echo ""
@@ -861,7 +555,6 @@ setup_rbw() {
 
     run_silent "Syncing vault" "$rbw_path" sync
 
-    # Configurar o agente via systemd user se disponível
     local use_systemd=false
     if command -v systemctl &>/dev/null && systemctl --user list-units &>/dev/null 2>&1; then
         use_systemd=true
@@ -911,7 +604,6 @@ EOF
         run_interactive "$rbw_path" unlock
     fi
 
-    # Exibir instruções finais
     echo ""
     print_info "rbw setup finished. Your SSH agent is running in this session."
     echo ""

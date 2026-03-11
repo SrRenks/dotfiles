@@ -195,6 +195,3 @@ fi
 # envman
 # ==============================
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh" || true
-
-# rbw SSH agent
-if ! pgrep -x "rbw-agent" > /dev/null; then rbw-agent --daemon; fi
