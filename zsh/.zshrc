@@ -74,7 +74,7 @@ export TERMINAL="alacritty"
 export LC_CTYPE=pt_BR.UTF-8
 export GTK_IM_MODULE=cedilla
 export QT_IM_MODULE=cedilla
-export SSH_AUTH_SOCK="$HOME/.ssh/s-bit-agent.sock"
+export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/rbw/ssh-agent-socket"
 
 # ==============================
 # bat pager

@@ -12,16 +12,16 @@ print_info() { echo -e "\033[0;32m[INFO]\033[0m $1" >&3; }
 print_warn() { echo -e "\033[0;33m[WARN]\033[0m $1" >&3; }
 print_error() { echo -e "\033[0;31m[ERROR]\033[0m $1" >&3; }
 
-# Run a command silently, showing a status message
-# Usage: run_silent "description" command [args...]
 run_silent() {
     local desc="$1"
     shift
     echo -n "$desc... "
-    local log_file=$(mktemp)
+    local log_file
+    log_file=$(mktemp)
     if "$@" &> "$log_file"; then
         echo -e "\033[0;32mOK\033[0m"
         rm -f "$log_file"
+        return 0
     else
         local exit_code=$?
         echo -e "\033[0;31mFAILED\033[0m"
@@ -81,6 +81,68 @@ detect_distro() {
             ;;
     esac
     print_info "Detected distribution family: $DISTRO_FAMILY"
+}
+
+# ==============================
+# Configure US International keyboard with accents (TTY)
+# ==============================
+configure_us_intl_tty() {
+    print_info "Configuring TTY keyboard layout for US International (with accents/dead keys)..."
+
+    if run_silent "Applying us-acentos map to current TTY" sudo loadkeys us-acentos; then
+        print_info "us-acentos map loaded successfully for current session."
+    else
+        print_warn "Failed to load us-acentos map for current session. It may not be available."
+    fi
+
+    case "$DISTRO_FAMILY" in
+        arch|debian|ubuntu|redhat|suse|alpine)
+            print_info "Setting persistent keyboard layout for $DISTRO_FAMILY..."
+            case "$DISTRO_FAMILY" in
+                arch)
+                    run_silent "Setting KEYMAP in /etc/vconsole.conf" \
+                        sudo bash -c "echo 'KEYMAP=us-acentos' > /etc/vconsole.conf"
+                    print_info "Persistent configuration set in /etc/vconsole.conf. Reboot to take full effect."
+                    ;;
+                debian|ubuntu)
+                    if command -v dpkg-reconfigure &>/dev/null; then
+                        echo 'console-data console-data/keymap/policy select Select keymap from list' | sudo debconf-set-selections
+                        echo 'console-data console-data/keymap/full select us-acentos' | sudo debconf-set-selections
+                        run_silent "Reconfiguring console-data" sudo dpkg-reconfigure -f noninteractive console-data
+                    else
+                        run_silent "Setting XKBLAYOUT in /etc/default/keyboard" \
+                            sudo bash -c "echo 'XKBLAYOUT=\"us\"' > /etc/default/keyboard && echo 'XKBVARIANT=\"intl\"' >> /etc/default/keyboard"
+                        print_info "Set XKBLAYOUT to 'us' with variant 'intl' in /etc/default/keyboard."
+                    fi
+                    ;;
+                redhat)
+                    if command -v localectl &>/dev/null; then
+                        run_silent "Setting keymap via localectl" sudo localectl set-keymap us-acentos
+                    else
+                        run_silent "Setting KEYMAP in /etc/vconsole.conf" \
+                            sudo bash -c "echo 'KEYMAP=us-acentos' > /etc/vconsole.conf"
+                    fi
+                    ;;
+                suse)
+                    if command -v localectl &>/dev/null; then
+                        run_silent "Setting keymap via localectl" sudo localectl set-keymap us-acentos
+                    else
+                        print_warn "Please use YaST to set keyboard to 'US International (with dead keys)' for persistence."
+                    fi
+                    ;;
+                alpine)
+                    run_silent "Setting KEYMAP in /etc/conf.d/keymaps" \
+                        sudo sed -i 's/^keymap=.*/keymap="us-acentos"/' /etc/conf.d/keymaps
+                    ;;
+            esac
+            ;;
+        *)
+            print_warn "Unsupported distribution for persistent keyboard configuration."
+            print_warn "You may need to manually add 'loadkeys us-acentos' to your startup scripts (e.g., ~/.zshrc, /etc/rc.local)."
+            ;;
+    esac
+
+    print_info "Keyboard configuration for TTY completed."
 }
 
 # ==============================
@@ -179,156 +241,185 @@ install_yazi() {
             fi
             ;;
         *)
-            if command -v cargo &>/dev/null; then
-                run_silent "Installing yazi via cargo" cargo install --locked yazi-fm
+            # Tenta instalar via binário estático primeiro (recomendado)
+            if command -v curl &>/dev/null && command -v unzip &>/dev/null; then
+                if run_silent "Installing yazi via binary" bash -c '
+                    set -e
+                    version=$(curl -s https://api.github.com/repos/sxyazi/yazi/releases/latest | grep -Po '\''"tag_name": *"v\K[^"]*'\'' || echo "26.1.22")
+                    url="https://github.com/sxyazi/yazi/releases/download/v${version}/yazi-${version}-x86_64-unknown-linux-musl.zip"
+                    tmp_dir="/tmp/yazi-install-$$"
+                    mkdir -p "$tmp_dir"
+                    curl -L -o "$tmp_dir/yazi.zip" "$url"
+                    unzip -q "$tmp_dir/yazi.zip" -d "$tmp_dir"
+                    binary_path=$(find "$tmp_dir" -name yazi -type f | head -n1)
+                    sudo install -Dm755 "$binary_path" /usr/local/bin/yazi
+                    rm -rf "$tmp_dir"
+                '; then
+                    print_info "yazi installed successfully from binary."
+                    return 0
+                else
+                    print_warn "Binary installation failed, falling back to cargo..."
+                fi
             else
-                print_warn "Cargo not available. Cannot install yazi."
+                print_warn "curl or unzip not available, skipping binary download."
+            fi
+
+            if command -v cargo &>/dev/null; then
+                if run_silent "Installing yazi via cargo" cargo install --locked yazi-fm; then
+                    print_info "yazi installed successfully via cargo."
+                else
+                    print_error "cargo installation failed. You may need to update Rust."
+                    return 1
+                fi
+            else
+                print_error "Cargo not available. Cannot install yazi."
+                return 1
             fi
             ;;
     esac
 }
 
 # ==============================
-# Install Node.js and npm
+# Install rbw (Bitwarden CLI with agent) for any distro
 # ==============================
-install_nodejs_npm() {
-    if command -v node &>/dev/null && command -v npm &>/dev/null; then
-        print_info "Node.js and npm already installed."
-        return
+install_rbw() {
+    if command -v rbw &>/dev/null; then
+        return 0
     fi
 
-    print_info "Installing Node.js and npm..."
+    print_info "Installing rbw (Bitwarden CLI with SSH agent)..."
+
     case "$DISTRO_FAMILY" in
+        arch)
+            run_silent "Installing rbw via pacman" sudo pacman -S --noconfirm rbw
+            ;;
         debian)
-            run_silent "Adding NodeSource repository" curl -fsSL https://deb.nodesource.com/setup_lts.x | sudo -E bash -
-            run_silent "Installing Node.js" sudo apt install -y nodejs
+            # Tenta via apt (pode não estar disponível em versões estáveis)
+            if sudo apt install -y rbw &>/dev/null; then
+                print_info "rbw installed via apt."
+            else
+                print_warn "rbw not found in apt repositories. Falling back to cargo..."
+                if command -v cargo &>/dev/null; then
+                    run_silent "Installing rbw via cargo" cargo install --locked rbw
+                else
+                    print_error "Cargo not available. Cannot install rbw."
+                    return 1
+                fi
+            fi
             ;;
         redhat)
-            run_silent "Adding NodeSource repository" curl -fsSL https://rpm.nodesource.com/setup_lts.x | sudo -E bash -
-            run_silent "Installing Node.js" sudo dnf install -y nodejs
-            ;;
-        arch)
-            run_silent "Installing Node.js and npm" sudo pacman -S --noconfirm nodejs npm
-            ;;
-        suse)
-            run_silent "Installing Node.js and npm" sudo zypper install -y nodejs npm
+            # Fedora/EPEL tem rbw
+            if sudo dnf install -y rbw &>/dev/null; then
+                print_info "rbw installed via dnf."
+            else
+                print_warn "rbw not found in dnf repositories. Falling back to cargo..."
+                if command -v cargo &>/dev/null; then
+                    run_silent "Installing rbw via cargo" cargo install --locked rbw
+                else
+                    print_error "Cargo not available. Cannot install rbw."
+                    return 1
+                fi
+            fi
             ;;
         alpine)
-            run_silent "Installing Node.js and npm" sudo apk add nodejs npm
+            run_silent "Installing rbw via apk" sudo apk add rbw
+            ;;
+        suse)
+            # Não há pacote oficial, usar cargo
+            if command -v cargo &>/dev/null; then
+                run_silent "Installing rbw via cargo" cargo install --locked rbw
+            else
+                print_error "Cargo not available. Cannot install rbw."
+                return 1
+            fi
             ;;
         *)
-            print_error "Cannot install Node.js automatically on this distro."
-            exit 1
+            # Fallback universal: cargo
+            if command -v cargo &>/dev/null; then
+                run_silent "Installing rbw via cargo" cargo install --locked rbw
+            else
+                print_error "Cargo not available. Cannot install rbw."
+                return 1
+            fi
             ;;
     esac
 }
 
 # ==============================
-# Install and configure s-bit-agent (Bitwarden CLI SSH agent)
+# Setup rbw (Bitwarden CLI with SSH agent)
 # ==============================
-setup_bitwarden_agent() {
-    print_info "Setting up Bitwarden with s-bit-agent..."
+setup_rbw() {
+    print_info "Setting up rbw (Bitwarden CLI with SSH agent)..."
 
-    install_nodejs_npm
-
-    if ! command -v bw &>/dev/null; then
-        run_silent "Installing Bitwarden CLI" sudo npm install -g @bitwarden/cli
-    else
-        print_info "Bitwarden CLI already installed."
+    # Garantir que rbw está instalado
+    if ! command -v rbw &>/dev/null; then
+        install_rbw || return 1
     fi
 
-    if ! command -v s-bit-agent &>/dev/null; then
-        run_silent "Installing s-bit-agent" sudo npm install -g s-bit-agent
-    else
-        print_info "s-bit-agent already installed."
-    fi
-
-    local sock_line='export SSH_AUTH_SOCK="$HOME/.ssh/s-bit-agent.sock"'
-    if ! grep -q "s-bit-agent.sock" "$HOME/.zshrc" 2>/dev/null; then
-        echo "" >> "$HOME/.zshrc"
-        echo "# s-bit-agent SSH agent socket" >> "$HOME/.zshrc"
-        echo "$sock_line" >> "$HOME/.zshrc"
-        print_info "Added SSH_AUTH_SOCK export to ~/.zshrc"
-    else
-        print_info "SSH_AUTH_SOCK already configured in ~/.zshrc"
-    fi
-
-    if command -v systemctl &>/dev/null && systemctl --user list-units &>/dev/null 2>&1; then
-        local service_dir="$HOME/.config/systemd/user"
-        local service_file="$service_dir/s-bit-agent.service"
-        mkdir -p "$service_dir"
-
-        local agent_path
-        agent_path=$(command -v s-bit-agent)
-
-        cat > "$service_file" <<EOF
-[Unit]
-Description=s-bit-agent daemon for Bitwarden SSH agent
-After=network.target
-
-[Service]
-Type=simple
-ExecStart=$agent_path daemon
-Restart=on-failure
-Environment="PATH=/usr/local/bin:/usr/bin:/bin:$HOME/.npm-global/bin"
-
-[Install]
-WantedBy=default.target
-EOF
-
-        run_silent "Reloading systemd" systemctl --user daemon-reload
-        run_silent "Enabling s-bit-agent service" systemctl --user enable --now s-bit-agent.service
-    else
-        print_warn "systemd user services not available. You'll need to start s-bit-agent manually:"
-        echo "  s-bit-agent daemon &"
-        echo "Add this to your .zshrc or startup script to run automatically."
-    fi
-
-    echo "Do you want to configure your Bitwarden account now?"
-    echo "This will allow you to log in and unlock your vault so the SSH agent (s-bit-agent) can access your keys."
+    # Configuração do email (obrigatório)
     echo ""
-    echo -n "Proceed with login? (Y/n) "
-    read -r login_choice
-    if [[ -z "$login_choice" || "$login_choice" =~ ^[Yy]$ ]]; then
-        echo ""
-        echo -n "Do you use a self-hosted Bitwarden server? (y/N) "
-        read -r self_hosted
-
-        if [[ "$self_hosted" =~ ^[Yy]$ ]]; then
-            echo -n "Enter your server URL (e.g., https://bitwarden.example.com): "
-            read -r server_url
-            if [[ -n "$server_url" ]]; then
-                print_info "Configuring server..."
-                run_interactive s-bit-agent -- bw config server "$server_url"
-            else
-                print_warn "No URL provided. Skipping server configuration."
-            fi
-        fi
-
-        print_info "Logging in to Bitwarden (follow the prompts)..."
-        run_interactive s-bit-agent -- bw login
-
-        print_info "Login completed. You may want to unlock your vault now to test:"
-        echo -n "Unlock vault now? (Y/n) "
-        read -r unlock_choice
-        if [[ -z "$unlock_choice" || "$unlock_choice" =~ ^[Yy]$ ]]; then
-            run_interactive s-bit-agent -- bw unlock
-        fi
-
-        echo ""
-        print_info "Checking s-bit-agent daemon status:"
-        run_interactive s-bit-agent status || true
-
-        echo ""
-        print_info "Bitwarden setup finished. Your SSH agent is ready to use."
-        echo "You can now test it with: ssh-add -l"
+    echo "rbw requires your Bitwarden email address."
+    echo -n "Enter your email: "
+    read -r email
+    if [[ -n "$email" ]]; then
+        run_silent "Configuring email" rbw config email "$email"
     else
-        print_info "Skipping login. You can do it later manually:"
-        echo "  s-bit-agent -- bw login"
-        echo "  s-bit-agent -- bw unlock"
+        print_error "Email is required. Aborting."
+        return 1
     fi
 
-    print_info "Bitwarden agent setup completed."
+    # Opção para servidor self-hosted
+    echo -n "Do you use a self-hosted Bitwarden server? (y/N) "
+    read -r self_hosted
+    if [[ "$self_hosted" =~ ^[Yy]$ ]]; then
+        echo -n "Enter your server URL (e.g., https://bitwarden.example.com): "
+        read -r server_url
+        if [[ -n "$server_url" ]]; then
+            run_silent "Configuring base_url" rbw config base_url "$server_url"
+            # identity_url, ui_url, notifications_url são opcionais; podem ser derivados
+        else
+            print_warn "No URL provided. Skipping server configuration."
+        fi
+    fi
+
+    # Login interativo (pode pedir 2FA)
+    print_info "Logging in to Bitwarden (follow the prompts)..."
+    run_interactive rbw login
+
+    # Sincronizar
+    run_silent "Syncing vault" rbw sync
+
+    # Configurar SSH agent no .zshrc
+    local sock_line='export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/rbw/ssh-agent-socket"'
+    local agent_start_line='if ! pgrep -x "rbw-agent" > /dev/null; then rbw-agent --daemon; fi'
+    if ! grep -q "rbw-agent" "$HOME/.zshrc" 2>/dev/null; then
+        echo "" >> "$HOME/.zshrc"
+        echo "# rbw SSH agent" >> "$HOME/.zshrc"
+        echo "$agent_start_line" >> "$HOME/.zshrc"
+        echo "$sock_line" >> "$HOME/.zshrc"
+        print_info "Added rbw SSH agent configuration to ~/.zshrc"
+    else
+        print_info "rbw SSH agent already configured in ~/.zshrc"
+    fi
+
+    # Iniciar o agente agora
+    if ! pgrep -x "rbw-agent" > /dev/null; then
+        run_silent "Starting rbw-agent" rbw-agent --daemon
+    fi
+
+    # Desbloquear o cofre (opcional)
+    echo ""
+    echo -n "Unlock your vault now? (Y/n) "
+    read -r unlock_choice
+    if [[ -z "$unlock_choice" || "$unlock_choice" =~ ^[Yy]$ ]]; then
+        run_interactive rbw unlock
+    fi
+
+    # Mostrar status
+    echo ""
+    print_info "rbw setup finished. Your SSH agent is ready."
+    echo "You can test it with: ssh-add -l"
+    echo "Socket: $SSH_AUTH_SOCK"
 }
 
 # ==============================
@@ -391,13 +482,22 @@ main() {
 
     install_lazygit
     install_yazi
+    echo ""
+    echo "Do you want to configure the TTY keyboard for US International (accents, cedilla)?"
+    echo -n "This enables ' + c = ç, etc. (Y/n) "
+    read -r config_keyboard
+    if [[ -z "$config_keyboard" || "$config_keyboard" =~ ^[Yy]$ ]]; then
+        configure_us_intl_tty
+    else
+        print_info "Skipping TTY keyboard configuration."
+    fi
 
     echo ""
-    echo "Do you want to use Bitwarden as your SSH agent (via s-bit-agent)?"
-    echo -n "This will install Node.js, Bitwarden CLI, and s-bit-agent. (Y/n) "
+    echo "Do you want to use Bitwarden as your SSH agent (via rbw)?"
+    echo -n "This will install rbw and configure the SSH agent. (Y/n) "
     read -r use_bitwarden
     if [[ -z "$use_bitwarden" || "$use_bitwarden" =~ ^[Yy]$ ]]; then
-        setup_bitwarden_agent
+        setup_rbw
     else
         print_info "Skipping Bitwarden SSH agent setup."
     fi
