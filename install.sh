@@ -362,7 +362,7 @@ setup_rbw() {
     echo -n "Enter your email: "
     read -r email
     if [[ -n "$email" ]]; then
-        run_silent "Configuring email" rbw config email "$email"
+        run_silent "Configuring email" rbw config set email "$email"
     else
         print_error "Email is required. Aborting."
         return 1
@@ -375,7 +375,7 @@ setup_rbw() {
         echo -n "Enter your server URL (e.g., https://bitwarden.example.com): "
         read -r server_url
         if [[ -n "$server_url" ]]; then
-            run_silent "Configuring base_url" rbw config base_url "$server_url"
+            run_silent "Configuring base_url" rbw config set base_url "$server_url"
             # identity_url, ui_url, notifications_url são opcionais; podem ser derivados
         else
             print_warn "No URL provided. Skipping server configuration."
