@@ -486,17 +486,29 @@ setup_rbw() {
     print_info "Setting up rbw (Bitwarden CLI with SSH agent)..."
 
     mkdir -p "$HOME/.config/rbw"
+    touch "$HOME/.config/rbw/config.toml"
 
-    if ! command -v rbw &>/dev/null; then
+    check_rbw() {
+        command -v rbw &>/dev/null && rbw --version &>/dev/null
+    }
+
+    if ! check_rbw; then
+        if command -v rbw &>/dev/null; then
+            print_warn "Existing rbw binary seems broken. Reinstalling..."
+            rm -f "$(command -v rbw)" 2>/dev/null || true
+        fi
         install_rbw || return 1
+        if ! check_rbw; then
+            print_error "rbw installation failed or binary still not working."
+            echo "Please try installing manually:"
+            echo "  cargo install --force --locked rbw"
+            echo "or via snap: sudo snap install rbw"
+            return 1
+        fi
     fi
 
     local rbw_path
     rbw_path=$(command -v rbw)
-    if ! "$rbw_path" --version &>/dev/null; then
-        print_error "rbw binary at $rbw_path is not executable or broken."
-        return 1
-    fi
 
     if ! command -v pinentry-tty &>/dev/null; then
         print_error "pinentry-tty not found in PATH. Please ensure it's installed."
@@ -516,16 +528,14 @@ setup_rbw() {
         return 1
     fi
 
-    echo -n "Do you use a self-hosted Bitwarden server? (y/N) "
-    read -r self_hosted
-    if [[ "$self_hosted" =~ ^[Yy]$ ]]; then
-        echo -n "Enter your server URL (e.g., https://bitwarden.example.com): "
-        read -r server_url
-        if [[ -n "$server_url" ]]; then
-            run_silent "Configuring base_url" "$rbw_path" config set base_url "$server_url"
-        else
-            print_warn "No URL provided. Skipping server configuration."
-        fi
+    echo "Bitwarden server URL (press Enter to use official server):"
+    echo -n "URL [https://api.bitwarden.com]: "
+    read -r server_url
+    if [[ -n "$server_url" ]]; then
+        run_silent "Configuring base_url" "$rbw_path" config set base_url "$server_url"
+        print_info "Using custom server: $server_url"
+    else
+        print_info "Using official Bitwarden server."
     fi
 
     print_info "Logging in to Bitwarden (follow the prompts)..."
