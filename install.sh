@@ -633,7 +633,7 @@ EOF
 
     echo ""
     echo "You can test the agent with: ssh-add -l"
-    echo "Socket: $SSH_AUTH_SOCK"
+    echo "Socket: $XDG_RUNTIME_DIR/rbw/ssh-agent-socket"
 }
 
 # ==============================
