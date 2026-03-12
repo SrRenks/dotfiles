@@ -416,7 +416,7 @@ setup_rbw() {
     rbw config set pinentry pinentry-tty
 
     echo ""
-    echo "rbw requires your Bitwarden email address."
+    print_info "rbw requires your Bitwarden email address."
     echo -n "Enter your email: "
     read -r email
     if [[ -n "$email" ]]; then
@@ -426,7 +426,7 @@ setup_rbw() {
         return 1
     fi
 
-    echo "Bitwarden server URL (press Enter to use official server):"
+    print_info "Bitwarden server URL (press Enter to use official server):"
     echo -n "URL [https://api.bitwarden.com]: "
     read -r server_url
     if [[ -n "$server_url" ]]; then
@@ -435,22 +435,33 @@ setup_rbw() {
 
     print_info "Attempting to log in with rbw (if fails, will guide through registration)..."
     if ! rbw login >/dev/null; then
-        print_warn "rbw login failed. This may require device registration with API key."
+        print_warn "rbw login failed. This may require device registration with your API key."
+        print_info "The Bitwarden CLI will be needed to proceed."
+        echo "It will be installed temporarily to perform the device registration."
+        echo "Make sure you have already stored your API key in your Vault as a login item named 'bw-api':"
+        echo "  - Use the client_id as the username"
+        echo "  - Use the client_secret as the password"
         echo "You can find your API key at: https://vault.bitwarden.com → Settings → Security → API Key"
-        echo -n "Proceed with automated registration? (Y/n) "
+        echo ""
+        echo -n "Proceed with automated registration and temporary Bitwarden CLI installation? (Y/n) "
         read -r register_choice
         if [[ -z "$register_choice" || "$register_choice" =~ ^[Yy]$ ]]; then
+            local bw_installed_by_script=false
+
             if ! command -v bw &>/dev/null; then
-                print_error "bw not installed. Cannot retrieve API key automatically."
-                echo "Please install bw first or run 'rbw register' manually."
-                return 1
+                print_info "Installing Bitwarden CLI (bw) temporarily for registration..."
+                install_bw
+                if command -v bw &>/dev/null; then
+                    bw_installed_by_script=true
+                else
+                    print_error "Failed to install bw. Please run 'rbw register' manually."
+                    return 1
+                fi
             fi
 
-            # Check if bw is logged in
             print_info "Checking Bitwarden CLI login status..."
             if ! bw login --check &>/dev/null; then
                 print_info "Please log in to Bitwarden CLI (follow the prompts)..."
-                # Run bw login interactively, but suppress the success message (stdout)
                 bw login >/dev/null
             fi
 
@@ -485,7 +496,6 @@ setup_rbw() {
             fi
 
             print_info "Running rbw register with retrieved API key..."
-            # Use expect to automate rbw register, capturing output only on error
             local temp_expect
             temp_expect=$(mktemp)
             if ! expect << EOF > "$temp_expect" 2>&1; then
@@ -508,6 +518,10 @@ EOF
 
             print_info "Registration successful. Now logging in with rbw..."
             rbw login >/dev/null
+
+            if $bw_installed_by_script; then
+                uninstall_bw
+            fi
         else
             print_error "Login failed and registration skipped. Exiting."
             return 1
@@ -547,10 +561,20 @@ EOF
     fi
 
     echo ""
-    echo "To use the SSH agent, add to your ~/.zshrc:"
+    print_info "To use the SSH agent, add to your ~/.zshrc:"
     echo "  export SSH_AUTH_SOCK=\"\$XDG_RUNTIME_DIR/rbw/ssh-agent-socket\""
     echo ""
     echo "Test with: ssh-add -l"
+}
+
+# ==============================
+# Uninstall bw (temporary installation)
+#===============================
+uninstall_bw() {
+    if command -v bw &>/dev/null; then
+        sudo rm -f "$(command -v bw)"
+        print_info "Temporary bw installation removed."
+    fi
 }
 
 # ==============================
@@ -573,16 +597,17 @@ set_default_shell() {
     zsh_path="$(command -v zsh)"
     if [[ "$SHELL" != "$zsh_path" ]]; then
         echo ""
-        echo "Do you want to change your default shell to zsh? (requires password)"
-        echo -n "Change shell? (y/N) "
-        read -r resp
-        if [[ "$resp" =~ ^[Yy]$ ]]; then
+        print_info "Do you want to change your default shell to zsh? (requires password)"
+        read -r -p "Change shell? (Y/n) " resp
+        if [[ -z "$resp" || "$resp" =~ ^[Yy]$ ]]; then
             print_info "Changing default shell to zsh (you may be prompted for your password)..."
             if run_interactive chsh -s "$zsh_path"; then
                 print_info "Default shell changed to zsh. Please log out and back in."
             else
                 print_error "Failed to change shell. You may need to run 'chsh -s $zsh_path' manually."
             fi
+        else
+            print_info "Skipping shell change."
         fi
     else
         print_info "zsh is already the default shell."
@@ -611,7 +636,7 @@ verify_commands() {
 # Main
 #===============================
 main() {
-    echo "Checking sudo access (you may be asked for your password)..."
+    print_info "Checking sudo access (you may be asked for your password)..."
     if ! sudo -v; then
         print_error "This script requires sudo privileges."
         exit 1
@@ -653,7 +678,7 @@ main() {
     install_rbw || true
 
     echo ""
-    echo "Do you want to configure the TTY keyboard for US International (accents, cedilla)?"
+    print_info "Do you want to configure the TTY keyboard for US International (accents, cedilla)?"
     echo -n "This enables ' + c = ç, etc. (Y/n) "
     read -r config_keyboard
     if [[ -z "$config_keyboard" || "$config_keyboard" =~ ^[Yy]$ ]]; then
@@ -663,7 +688,7 @@ main() {
     fi
 
     echo ""
-    echo "Do you want to use Bitwarden as your SSH agent (via rbw)?"
+    print_info "Do you want to use Bitwarden as your SSH agent (via rbw)?"
     echo
     echo "This will:"
     echo "  - Install the Bitwarden CLI (bw) to allow authentication from this machine."
