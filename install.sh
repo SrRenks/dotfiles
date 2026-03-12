@@ -446,12 +446,17 @@ setup_rbw() {
                 return 1
             fi
 
-            print_info "Logging into Bitwarden CLI (bw)..."
-            bw login >/dev/null 2>&1 || true
+            # Check if bw is logged in
+            print_info "Checking Bitwarden CLI login status..."
+            if ! bw login --check &>/dev/null; then
+                print_info "Please log in to Bitwarden CLI (follow the prompts)..."
+                # Run bw login interactively, but suppress the success message (stdout)
+                bw login >/dev/null
+            fi
 
             print_info "Unlocking Bitwarden vault to retrieve API keys..."
             local BW_SESSION
-            BW_SESSION=$(bw unlock --raw 2>/dev/tty)
+            BW_SESSION=$(bw unlock --raw)
             if [[ -z "$BW_SESSION" ]]; then
                 print_error "Failed to unlock bw."
                 return 1
@@ -480,6 +485,7 @@ setup_rbw() {
             fi
 
             print_info "Running rbw register with retrieved API key..."
+            # Use expect to automate rbw register, capturing output only on error
             local temp_expect
             temp_expect=$(mktemp)
             if ! expect << EOF > "$temp_expect" 2>&1; then
