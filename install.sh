@@ -399,6 +399,7 @@ install_yay() {
 setup_rbw() {
     print_info "Setting up rbw..."
 
+    # Instalar pinentry-tty se necessário
     if ! command -v pinentry-tty &>/dev/null; then
         case "$DISTRO_FAMILY" in
             debian) run_with_spinner "Installing pinentry-tty" sudo apt install -y pinentry-tty ;;
@@ -433,34 +434,69 @@ setup_rbw() {
         rbw config set base_url "$server_url"
     fi
 
-    print_info "Attempting to log in (if fails, will guide through registration)..."
+    print_info "Attempting to log in with rbw (if fails, will guide through registration)..."
     if ! rbw login; then
-        print_warn "Login failed. This may require device registration with API key."
+        print_warn "rbw login failed. This may require device registration with API key."
         echo "You can find your API key at: https://vault.bitwarden.com → Settings → Security → API Key"
         echo -n "Proceed with automated registration? (Y/n) "
         read -r register_choice
         if [[ -z "$register_choice" || "$register_choice" =~ ^[Yy]$ ]]; then
+            # --- Início da automação com bw ---
             if ! command -v bw &>/dev/null; then
-                print_error "bw not installed; cannot retrieve API key automatically."
-                echo "Please run manually: rbw register"
+                print_error "bw is not installed. Please install it first."
                 return 1
             fi
 
+            # Verificar status do bw
+            local bw_status
+            bw_status=$(bw status 2>/dev/null | grep -o '"status":"[^"]*"' | cut -d'"' -f4)
+            if [[ -z "$bw_status" || "$bw_status" == "unauthenticated" ]]; then
+                print_info "bw is not logged in. Please log in now."
+                if ! run_interactive bw login; then
+                    print_error "bw login failed."
+                    return 1
+                fi
+                # Após login, o status muda, mas precisamos desbloquear
+            fi
+
+            # Agora desbloquear e obter sessão
+            print_info "Unlocking Bitwarden vault to retrieve API keys..."
+            local BW_SESSION
+            BW_SESSION=$(bw unlock --raw)
+            if [[ -z "$BW_SESSION" ]]; then
+                print_error "Failed to unlock bw."
+                return 1
+            fi
+
+            # Verificar se o item "bw-api" existe
+            if ! bw list items --search bw-api --session "$BW_SESSION" | grep -q '"id"'; then
+                print_error "Item 'bw-api' not found in your Bitwarden vault."
+                echo "Please create a secure note named 'bw-api' with:"
+                echo "  username: your client_id"
+                echo "  password: your client_secret"
+                echo "Then run this script again."
+                return 1
+            fi
+
+            # Obter client_id e client_secret
             local client_id client_secret
-            client_id=$(bw get username bw-api 2>/dev/null || true)
-            client_secret=$(bw get password bw-api 2>/dev/null || true)
+            client_id=$(bw get username bw-api --session "$BW_SESSION" 2>/dev/null || true)
+            client_secret=$(bw get password bw-api --session "$BW_SESSION" 2>/dev/null || true)
             if [[ -z "$client_id" || -z "$client_secret" ]]; then
-                print_error "Could not retrieve API key from bw. Please run 'rbw register' manually."
+                print_error "Could not retrieve API key from item 'bw-api'."
                 return 1
             fi
 
+            # Verificar se expect está instalado
             if ! command -v expect &>/dev/null; then
-                print_warn "expect not installed. Please run 'rbw register' manually."
+                print_error "expect is not installed. Cannot automate registration."
+                echo "Please run 'rbw register' manually."
                 return 1
             fi
 
-            print_info "Running rbw register with provided API key..."
-            expect << EOF
+            # Executar rbw register com expect
+            print_info "Running rbw register with retrieved API key..."
+            if ! expect << EOF
 set timeout 30
 spawn rbw register
 expect "API key client__id:"
@@ -471,21 +507,26 @@ expect eof
 catch wait result
 exit [lindex \$result 3]
 EOF
-            if [[ $? -eq 0 ]]; then
-                print_info "Registration successful. Now logging in..."
-                rbw login
-            else
-                print_error "Registration failed. Please run manually: rbw register"
+            then
+                print_error "rbw registration failed. Please run 'rbw register' manually."
+                return 1
+            fi
+
+            print_info "Registration successful. Now logging in with rbw..."
+            if ! rbw login; then
+                print_error "rbw login failed after registration. Please check your credentials."
                 return 1
             fi
         else
-            print_error "Login failed and registration skipped. Exiting."
+            print_error "rbw login failed and registration skipped."
             return 1
         fi
     fi
 
+    # Sincronizar vault
     run_with_spinner "Syncing vault" rbw sync
 
+    # Configurar agente SSH
     if command -v systemctl &>/dev/null && systemctl --user list-units &>/dev/null 2>&1; then
         print_info "Setting up systemd user service for rbw-agent..."
         local service_dir="$HOME/.config/systemd/user"
