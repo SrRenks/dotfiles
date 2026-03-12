@@ -591,14 +591,13 @@ main() {
 
     local common_packages=(
         zsh tmux neovim fzf zoxide lsd git curl wget stow wl-clipboard
-        openssh-client bat xdg-utils alacritty build-essential unzip jq
-        expect
+        bat xdg-utils alacritty unzip jq expect
     )
 
     case "$DISTRO_FAMILY" in
-        debian) common_packages+=(cargo) ;;
+        debian) common_packages+=(build-essential openssh-client cargo) ;;
         redhat) common_packages+=(cargo) ;;
-        arch)   common_packages+=(cargo) ;;
+        arch)   common_packages+=(base-devel openssh) ;;
         suse)   common_packages+=(cargo) ;;
         alpine) common_packages+=(cargo) ;;
     esac
