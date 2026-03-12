@@ -480,10 +480,18 @@ setup_rbw() {
             fi
 
             print_info "Running rbw register with retrieved API key..."
-
             local temp_expect
             temp_expect=$(mktemp)
             if ! expect << EOF > "$temp_expect" 2>&1; then
+spawn rbw register
+expect "API key client__id:"
+send -- "$client_id\r"
+expect "API key client__secret:"
+send -- "$client_secret\r"
+expect eof
+catch wait result
+exit [lindex \$result 3]
+EOF
                 cat "$temp_expect"
                 print_error "Registration failed. See output above."
                 rm -f "$temp_expect"
@@ -492,7 +500,6 @@ setup_rbw() {
                 rm -f "$temp_expect"
             fi
 
-            # Now try to log in again
             print_info "Registration successful. Now logging in with rbw..."
             rbw login >/dev/null
         else
