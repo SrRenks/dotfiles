@@ -192,6 +192,9 @@ install_packages() {
     esac
 }
 
+# ==============================
+# Install Rust with rustup
+#===============================
 ensure_rust() {
     if command -v rustc &>/dev/null && command -v cargo &>/dev/null; then
         print_info "Rust already installed."
@@ -205,6 +208,7 @@ ensure_rust() {
         print_error "Rust installation failed."
         return 1
     fi
+}
 
 # ==============================
 # Generic GitHub binary installer
