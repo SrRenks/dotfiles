@@ -72,10 +72,7 @@ export EDITOR="nvim"
 export VISUAL="nvim"
 export SUDO_EDITOR="nvim"
 export FCEDIT="nvim"
-export TERMINAL="alacritty"
-export LC_CTYPE=pt_BR.UTF-8
-export GTK_IM_MODULE=cedilla
-export QT_IM_MODULE=cedilla
+export TERMINAL="kitty"
 export SSH_AUTH_SOCK="$XDG_RUNTIME_DIR/rbw/ssh-agent-socket"
 
 # ==============================
