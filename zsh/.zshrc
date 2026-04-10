@@ -6,13 +6,15 @@ export PATH="$HOME/.local/bin:$PATH"
 # ==============================
 # TMUX auto start
 # ==============================
-if command -v tmux >/dev/null && [[ -z "$TMUX" && -o interactive ]]; then
+if command -v tmux >/dev/null 2>&1; then
+  if [[ -z "$TMUX" && $- == *i* ]]; then
     if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
-        session_name="ssh-${HOSTNAME}"
+      session_name="ssh-${HOSTNAME}"
     else
-        session_name="main"
+      session_name="main"
     fi
     exec tmux new-session -A -s "$session_name"
+  fi
 fi
 
 # ==============================
