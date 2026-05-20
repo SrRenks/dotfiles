@@ -1,0 +1,27 @@
+{
+  "format": "{player_icon} {title} - {artist} ",
+  "format-paused": "{player_icon} {status_icon} {title} - {artist}",
+
+  "player": "auto",
+
+  "on-click": "sh -c \"p=$(playerctl -l 2>/dev/null | head -n1); [ -n \\\"$p\\\" ] && playerctl -p \\\"$p\\\" play-pause\"",
+  "on-click-right": "sh -c \"p=$(playerctl -l 2>/dev/null | head -n1); [ -n \\\"$p\\\" ] && playerctl -p \\\"$p\\\" next\"",
+  "on-click-middle": "sh -c \"p=$(playerctl -l 2>/dev/null | head -n1); [ -n \\\"$p\\\" ] && playerctl -p \\\"$p\\\" previous\"",
+
+  "player-icons": {
+    "default": "<span foreground='#cba6f7'>󰝚 </span>",
+    "spotify": "<span foreground='#a6e3a1'>󰓇 </span>",
+    "firefox": "<span foreground='#f38ba8'>󰗃 </span>"
+  },
+
+  "status-icons": {
+    "paused": "<span color='#b4befe'>󰏤</span>"
+  },
+
+  "tooltip-format": "Playing: {title} - {artist}",
+  "tooltip-format-paused": "Paused: {title} - {artist}",
+
+  "min-length": 5,
+  "max-length": 18,
+  "ellipsize": "end"
+}
