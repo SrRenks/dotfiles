@@ -1,33 +1,11 @@
 # ==============================
 # PATH
 # ==============================
+
 export PATH="$HOME/.local/bin:$PATH"
 
-# ==============================
-# TMUX auto start
-# ==============================
-if command -v tmux >/dev/null 2>&1; then
-  if [[ -z "$TMUX" && $- == *i* ]]; then
-    if [[ -n "$SSH_CLIENT" || -n "$SSH_TTY" ]]; then
-      session_name="ssh-${HOSTNAME}"
-    else
-      session_name="main"
-    fi
-    exec tmux new-session -A -s "$session_name"
-  fi
-fi
 
-# ==============================
-# Powerlevel10k Instant Prompt
-# ==============================
-if [[ -r "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh" ]]; then
-  source "${XDG_CACHE_HOME:-$HOME/.cache}/p10k-instant-prompt-${(%):-%n}.zsh"
-fi
-
-# ==============================
-# Zinit
-# ==============================
-ZINIT_HOME="${XDG_DATA_HOME:-${HOME}/.local/share}/zinit/zinit.git"
+ZINIT_HOME="${XDG_DATA_HOME:-$HOME/.local/share}/zinit/zinit.git"
 
 if [[ ! -d "$ZINIT_HOME" ]]; then
   mkdir -p "$(dirname "$ZINIT_HOME")"
@@ -190,7 +168,9 @@ if command -v curl >/dev/null; then
   alias ipexternal="curl -s ifconfig.me && echo"
 fi
 
+
 # ==============================
 # envman
 # ==============================
 [ -s "$HOME/.config/envman/load.sh" ] && source "$HOME/.config/envman/load.sh" || true
+
