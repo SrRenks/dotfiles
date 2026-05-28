@@ -1,6 +1,4 @@
-#!/bin/bash
-
-WALL_DIR="$HOME/.local/share/wallpapers"
+WALL_DIR="$HOME/Wallpapers"
 
 SELECTED=$(find "$WALL_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -iname "*.png" \) \
     | while read -r img; do
@@ -11,9 +9,12 @@ SELECTED=$(find "$WALL_DIR" -type f \( -iname "*.jpg" -o -iname "*.jpeg" -o -ina
 
 [ -z "$SELECTED" ] && exit 0
 
-if ! pgrep -x "awww" > /dev/null; then
-    awww &
-    sleep 0.2
+# garante wallpaper daemon
+if ! pgrep -x "awww-daemon" > /dev/null; then
+    awww-daemon &
+    sleep 1
 fi
 
-awww img "$SELECTED" --transition-type=random
+# seta wallpaper
+awww img "$SELECTED" --transition-type random
+wallust run "$SELECTED"
