@@ -23,6 +23,7 @@
     "~/.config/waybar/Modules/weather.jsonc",
     "~/.config/waybar/Modules/window.jsonc",
     "~/.config/waybar/Modules/wirepumbler.jsonc",
-    "~/.config/waybar/Modules/workspaces.jsonc"
+    "~/.config/waybar/Modules/workspaces.jsonc",
+    "~/.config/waybar/Modules/powerprofile.jsonc"
   ]
 }

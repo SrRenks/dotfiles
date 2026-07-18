@@ -49,7 +49,7 @@
 
   "group/hollow-right-1": {
     "orientation": "horizontal",
-    "modules": ["backlight", "wireplumber", "network", "custom/power", "battery"]
+    "modules": ["backlight", "wireplumber", "network", "custom/powerprofile", "battery", "custom/power"]
   },
 
   "group/hollow-right-3": {

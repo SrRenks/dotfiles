@@ -1,0 +1,15 @@
+{
+  "custom/powerprofile": {
+    "return-type": "json",
+
+    "exec": "~/.config/waybar/Scripts/powerprofile/powerprofile.sh",
+    "interval": 5,
+    "signal": 9,
+
+    "on-click": "~/.config/waybar/Scripts/powerprofile/powerprofile-toggle.sh",
+    "on-click-right": "~/.config/waybar/Scripts/powerprofile/powerprofile-menu.sh",
+
+    "on-scroll-up": "~/.config/waybar/Scripts/powerprofile/powerprofile-toggle.sh",
+    "on-scroll-down": "~/.config/waybar/Scripts/powerprofile/powerprofile-toggle.sh"
+  }
+}

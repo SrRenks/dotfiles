@@ -17,7 +17,7 @@ source "$ZINIT_HOME/zinit.zsh"
 # ==============================
 # Plugins
 # ==============================
-zinit ice depth=1
+zinit ice wait'0' lucid depth=1
 zinit light romkatv/powerlevel10k
 
 zinit light zsh-users/zsh-autosuggestions
@@ -34,7 +34,7 @@ zinit snippet OMZP::docker
 zinit snippet OMZP::command-not-found
 
 autoload -Uz compinit
-compinit -u
+compinit -u -C
 
 zinit cdreplay -q
 
