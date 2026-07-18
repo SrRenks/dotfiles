@@ -1,0 +1,9 @@
+# Runtime/generated files
+*.img
+*.old
+grub.cfg
+*.bak
+
+# Never commit secrets
+*.key
+*.pem
