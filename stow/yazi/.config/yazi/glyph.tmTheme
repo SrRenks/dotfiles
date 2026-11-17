@@ -1,0 +1,201 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  reddoted · glyph syntax theme for yazi's code preview
+
+  The rest of the desktop is black, white and one red; the stock syntax themes
+  are a rainbow. This one keeps the same rule for code: grey for comments and
+  punctuation, white for names and values, red for the things that are actually
+  keywords or errors.
+
+  It is a dark theme on purpose, it pairs with the dark half of the Glyph
+  palette. If you live in light mode, copy this file, invert the backgrounds
+  (#0E0E0E ↔ #F2F2F2) and point syntect_theme at the copy.
+-->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>name</key>
+	<string>glyph</string>
+	<key>semanticClass</key>
+	<string>theme.dark.glyph</string>
+	<key>settings</key>
+	<array>
+		<dict>
+			<key>settings</key>
+			<dict>
+				<key>background</key>
+				<string>#0E0E0E</string>
+				<key>foreground</key>
+				<string>#F2F2F2</string>
+				<key>caret</key>
+				<string>#D71921</string>
+				<key>lineHighlight</key>
+				<string>#1A1A1A</string>
+				<key>selection</key>
+				<string>#2A2A2A</string>
+				<key>invisibles</key>
+				<string>#4A4A4A</string>
+				<key>guide</key>
+				<string>#2A2A2A</string>
+				<key>activeGuide</key>
+				<string>#4A4A4A</string>
+			</dict>
+		</dict>
+
+		<!-- comments: quiet, never compete with code -->
+		<dict>
+			<key>scope</key>
+			<string>comment, punctuation.definition.comment</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#6E6E6E</string>
+				<key>fontStyle</key>
+				<string>italic</string>
+			</dict>
+		</dict>
+
+		<!-- keywords and storage: the one red thing in the file -->
+		<dict>
+			<key>scope</key>
+			<string>keyword, storage, storage.modifier, storage.type, keyword.control, keyword.operator.new</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#D71921</string>
+			</dict>
+		</dict>
+
+		<!-- strings and their interpolation -->
+		<dict>
+			<key>scope</key>
+			<string>string, string.quoted, string.template, constant.character, constant.other.symbol</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#C9C9C9</string>
+			</dict>
+		</dict>
+
+		<!-- numbers and language constants: white, bold, no colour -->
+		<dict>
+			<key>scope</key>
+			<string>constant.numeric, constant.language, constant.language.boolean, support.constant</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#F2F2F2</string>
+				<key>fontStyle</key>
+				<string>bold</string>
+			</dict>
+		</dict>
+
+		<!-- function and method names -->
+		<dict>
+			<key>scope</key>
+			<string>entity.name.function, entity.name.function.method, support.function, meta.function-call entity.name</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#FFFFFF</string>
+				<key>fontStyle</key>
+				<string>bold</string>
+			</dict>
+		</dict>
+
+		<!-- types, classes, namespace -->
+		<dict>
+			<key>scope</key>
+			<string>entity.name.type, entity.name.class, entity.name.struct, entity.other.inherited-class, support.type, support.class, entity.name.namespace</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#E0E0E0</string>
+			</dict>
+		</dict>
+
+		<!-- variables, parameters, properties -->
+		<dict>
+			<key>scope</key>
+			<string>variable, variable.parameter, variable.other.property, meta.object-literal.key, support.variable.property</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#B0B0B0</string>
+			</dict>
+		</dict>
+
+		<!-- markup: headings, links, code fences -->
+		<dict>
+			<key>scope</key>
+			<string>markup.heading, entity.name.section, markup.bold</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#FFFFFF</string>
+				<key>fontStyle</key>
+				<string>bold</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>scope</key>
+			<string>markup.italic</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#C9C9C9</string>
+				<key>fontStyle</key>
+				<string>italic</string>
+			</dict>
+		</dict>
+		<dict>
+			<key>scope</key>
+			<string>markup.underline.link, string.other.link</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#8EA3C2</string>
+				<key>fontStyle</key>
+				<string>underline</string>
+			</dict>
+		</dict>
+
+		<!-- escaped characters and regex classes get a subtle lift -->
+		<dict>
+			<key>scope</key>
+			<string>string.regexp, constant.character.escape, punctuation.definition.template-expression</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#D9C38A</string>
+			</dict>
+		</dict>
+
+		<!-- punctuation: present, but nearly invisible -->
+		<dict>
+			<key>scope</key>
+			<string>punctuation, meta.brace, punctuation.separator, punctuation.terminator</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#8A8A8A</string>
+			</dict>
+		</dict>
+
+		<!-- invalid -->
+		<dict>
+			<key>scope</key>
+			<string>invalid, invalid.illegal, message.error</string>
+			<key>settings</key>
+			<dict>
+				<key>foreground</key>
+				<string>#0E0E0E</string>
+				<key>background</key>
+				<string>#D71921</string>
+			</dict>
+		</dict>
+	</array>
+	<key>uuid</key>
+	<string>8f2c1f5e-2b1a-4a63-9f7e-0d1c4b7a6e21</string>
+</dict>
+</plist>

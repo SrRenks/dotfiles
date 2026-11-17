@@ -1,0 +1,11 @@
+# dev: global gitignore. Editor and OS litter that has no business in a repo.
+# `~/.config/git/identity` lives in this directory too and is not ours: stowing
+# only adds this file next to it.
+.DS_Store
+._*
+*.swp
+*.swo
+*~
+.idea/
+*.local
+.cache/

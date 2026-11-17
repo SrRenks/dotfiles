@@ -1,0 +1,99 @@
+# dev: git, for someone who reads diffs all day.
+#
+# The identity blocks at the top are yours, kept verbatim: name and email come
+# from ~/.config/git/identity depending on which tree the repo is in, and the
+# credential helper is gh. Nothing here overrides them.
+#
+# Everything below is behaviour, not identity: a merge style that shows the
+# common ancestor, a diff algorithm that reads better for code, and the switches
+# that stop git from making you repeat yourself.
+
+[includeIf "gitdir:~/Projects/"]
+	path = ~/.config/git/identity
+
+[includeIf "gitdir:~/.config/"]
+	path = ~/.config/git/identity
+
+# A repo cloned straight into $HOME matched none of the rules above, so it had no
+# identity and every commit failed with "Author identity unknown". `gitdir:~/`
+# matches the home directory itself, not its subtrees, so this fills that gap
+# without touching the two rules above.
+[includeIf "gitdir:~/"]
+	path = ~/.config/git/identity
+
+[credential "https://github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+
+[credential "https://gist.github.com"]
+	helper =
+	helper = !/usr/bin/gh auth git-credential
+
+[init]
+	defaultBranch = main
+
+[core]
+	# less with the flags every dotfiles repo ends up rediscovering: keep colour,
+	# quit if it fits on one screen, no clear on exit, no horizontal chop.
+	pager = less -FRX
+	excludesFile = ~/.config/git/ignore
+
+[diff]
+	algorithm = histogram
+	colorMoved = zebra
+	renames = copies
+
+[merge]
+	# zdiff3 keeps the common ancestor in the conflict block. Conflicts stop being
+	# a guessing game about which side deleted what.
+	conflictStyle = zdiff3
+
+[rebase]
+	autoStash = true
+	autosquash = true
+
+[pull]
+	rebase = true
+
+[push]
+	autoSetupRemote = true
+	default = current
+
+[fetch]
+	prune = true
+	pruneTags = true
+
+[rerere]
+	enabled = true
+	autoupdate = true
+
+[status]
+	showUntrackedFiles = normal
+	submoduleSummary = true
+
+[log]
+	date = iso-local
+	decorate = auto
+
+[column]
+	ui = auto
+
+[help]
+	autocorrect = prompt
+
+# No background maintenance. A dotfiles machine is not a CI runner, and `git gc`
+# waking up mid-session is exactly the kind of RAM spend this repo avoids.
+[maintenance]
+	auto = false
+
+# Aliases that work in any shell, not only in fish.
+[alias]
+	st = status --short --branch
+	sw = switch
+	br = branch --sort=-committerdate --format='%(refname:short) %(committerdate:relative)'
+	unstage = restore --staged
+	amend = commit --amend --no-edit
+	last = log -1 --stat
+	graph = log --graph --oneline --decorate --all
+	root = rev-parse --show-toplevel
+	gone = branch -vv --list

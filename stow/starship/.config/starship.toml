@@ -1,0 +1,193 @@
+# dotfiles · starship
+#
+# Rules this file follows, in order of importance:
+#
+#   1. ANSI colour names only ("white", "red", "bright-black"). Starship then
+#      paints with the terminal's 16 colours, which the Glyph shell rewrites on
+#      every palette change. Nothing here hardcodes a hex value.
+#   2. The left side answers "where am I": path, then git, then the project's
+#      toolchain. The right side answers "what just happened": exit code, timing.
+#   3. Every module must be either free (an env var starship already has) or
+#      fire only inside a project that needs it. Version modules probe a binary,
+#      so they are limited to the toolchains actually used here.
+#
+# Reload: nothing to do, starship reads this on every prompt.
+
+"$schema" = 'https://starship.rs/config-schema.json'
+
+add_newline = false
+scan_timeout = 10
+command_timeout = 300
+
+# ── left: where am I ─────────────────────────────────────────────────────────
+# Path · git · toolchain · loaded environment
+format = """$directory$git_branch$git_status$git_state$python$nodejs$rust$golang$docker_context$kubernetes$direnv$character"""
+
+# ── right: what just happened ────────────────────────────────────────────────
+# Nothing here runs unless it has something true to say.
+right_format = """$jobs$status$cmd_duration"""
+
+# ── character ────────────────────────────────────────────────────────────────
+# One glyph, two states: white when the command succeeded, red when it did not.
+# That is the only "live" colour in the prompt, mirroring the Glyph rule.
+[character]
+success_symbol = "[›](bright-white)"
+error_symbol = "[›](red)"
+vimcmd_symbol = "[‹](bright-white)"
+vimcmd_visual_symbol = "[‹](red)"
+format = "$symbol "
+
+# ── directory ────────────────────────────────────────────────────────────────
+[directory]
+style = "bright-white"
+format = "[$path]($style)[$read_only]($read_only_style) "
+truncation_length = 3
+truncation_symbol = "…/"
+truncate_to_repo = true
+read_only = " ●"
+read_only_style = "red"
+# The repo root is bold, the rest is ordinary: at a glance you know if you are
+# at the top of the project or somewhere inside it.
+repo_root_style = "bold white"
+home_symbol = "~"
+
+# ── git ──────────────────────────────────────────────────────────────────────
+# Branches and states are metadata: grey. Only conflicts and divergence earn ink.
+[git_branch]
+symbol = ""
+# The branch is the only coloured thing in the prompt. Nothing else competes.
+style = "red"
+format = "[$branch]($style) "
+truncation_symbol = "…/"
+
+[git_status]
+style = "bright-black"
+format = "([$all_status$ahead_behind]($style) )"
+conflicted = "="
+ahead = "⇡"
+behind = "⇣"
+diverged = "⇕"
+up_to_date = ""
+untracked = "?"
+modified = "!"
+staged = "+"
+renamed = "»"
+deleted = "✘"
+
+[git_state]
+style = "red"
+format = '([\($state( $progress_current/$progress_total\))]($style) )'
+
+# Lines added/removed when you are in a repo. Costs one `git diff --shortstat`.
+[git_metrics]
+disabled = true
+added_style = "green"
+deleted_style = "red"
+only_nonzero_diffs = true
+format = '([+$added]($added_style) )([-$deleted]($deleted_style) )'
+
+# ── toolchains ───────────────────────────────────────────────────────────────
+# Each of these runs one `<binary> --version` and only when the module's
+# detect_files match. `version_format` keeps them to major.minor.
+[python]
+symbol = "py "
+style = "bright-black"
+format = '[${symbol}${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
+version_format = "v${major}.${minor}"
+pyenv_version_name = false
+# Project markers only. A stray .py in $HOME made every prompt in the home
+# directory read as a Python project.
+detect_extensions = []
+detect_files = ["pyproject.toml", "requirements.txt", "Pipfile", ".python-version", "uv.lock", "setup.py", "manage.py"]
+
+[nodejs]
+symbol = "js "
+style = "bright-black"
+format = "[$symbol($version )]($style)"
+version_format = "v${major}.${minor}"
+detect_files = ["package.json", "bun.lock", "bun.lockb", ".nvmrc", "node_modules"]
+
+[rust]
+symbol = "rs "
+style = "bright-black"
+format = "[$symbol($version )]($style)"
+version_format = "v${major}.${minor}"
+# Same rule as python: a Cargo.toml is a Rust project, a stray .rs is not. It also
+# stops a rustc probe from running every prompt in a folder with one file.
+detect_extensions = []
+detect_files = ["Cargo.toml"]
+
+[golang]
+symbol = "go "
+style = "bright-black"
+format = "[$symbol($version )]($style)"
+version_format = "v${major}.${minor}"
+
+[docker_context]
+symbol = "dk "
+style = "bright-black"
+format = "[$symbol($context )]($style)"
+
+# Kubernetes context is red on purpose: the wrong cluster is an incident.
+[kubernetes]
+symbol = "k8s "
+style = "bold red"
+format = "[$symbol($context )]($style)"
+disabled = false
+detect_files = []
+detect_extensions = []
+context_aliases = {}
+
+# ── environment ──────────────────────────────────────────────────────────────
+# direnv is hooked in fish; this only reports that a .envrc is loaded.
+[direnv]
+disabled = false
+style = "bright-black"
+format = "[direnv]($style) "
+
+# ── right side ───────────────────────────────────────────────────────────────
+[status]
+disabled = false
+style = "red"
+format = "[$status]($style) "
+recognize_signal_code = true
+
+[cmd_duration]
+min_time = 2000
+style = "bright-black"
+format = "[$duration]($style) "
+
+# fish knows its own background jobs; starship only prints them when non-zero.
+[jobs]
+symbol = "&"
+number_threshold = 1
+symbol_threshold = 1
+style = "bright-black"
+format = "[$symbol$number]($style) "
+
+# ── deliberately off ─────────────────────────────────────────────────────────
+# battery, the Glyph bar already shows the cell; the prompt would duplicate it
+# time, same: the bar has a clock
+# hostname, enabled only over ssh, see below
+# username, enabled only for root, see below
+[battery]
+disabled = true
+
+[time]
+disabled = true
+
+# You should always be able to see that you are on another machine, or that you
+# are root. Otherwise they stay invisible.
+[hostname]
+ssh_only = true
+style = "red"
+format = "on [$hostname]($style) "
+
+[username]
+style_user = "bright-black"
+style_root = "bold red"
+format = "[$user]($style)@"
+show_always = false
+
+[os]
+disabled = true

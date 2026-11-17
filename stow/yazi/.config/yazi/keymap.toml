@@ -1,0 +1,56 @@
+# dotfiles · yazi keys
+#
+# Yazi's defaults are already vim-shaped, so this file only adds the plugins.
+# `prepend_keymap` wins over the stock binding, which is why rebinding `l` and
+# `p` works at all, but every other stock key is deliberately left alone.
+#
+# The grammar stays the stock one: g = go, c = copy, t = tab, m = linemode,
+# , = sort, z/Z = fzf/zoxide. No second dialect.
+
+#:schema https://yazi-rs.github.io/schemas/keymap.json
+
+# ── navigation ───────────────────────────────────────────────────────────────
+[[mgr.prepend_keymap]]
+on = "l"
+run = "plugin smart-enter"
+desc = "Enter the child directory, or open the hovered file"
+
+# ── layout ───────────────────────────────────────────────────────────────────
+[[mgr.prepend_keymap]]
+on = "T"
+run = "plugin toggle-pane max-preview"
+desc = "Maximize or restore the preview"
+
+# ── files ────────────────────────────────────────────────────────────────────
+[[mgr.prepend_keymap]]
+on = "p"
+run = "plugin smart-paste"
+desc = "Paste into the hovered directory, or into the cwd"
+
+[[mgr.prepend_keymap]]
+on = ["c", "m"]
+run = "plugin chmod"
+desc = "Change the mode of the selected files"
+
+[[mgr.prepend_keymap]]
+on = "<C-x>"
+run = "plugin diff"
+desc = "Diff the selected file against the hovered one"
+
+# ── devices ──────────────────────────────────────────────────────────────────
+[[mgr.prepend_keymap]]
+on = "M"
+run = "plugin mount"
+desc = "Mount manager"
+
+# ── images ───────────────────────────────────────────────────────────────────
+# `-` is taken by yazi (symlink), so zoom lives on +/= instead of +/-.
+[[mgr.prepend_keymap]]
+on = "+"
+run = "plugin zoom 1"
+desc = "Zoom the preview in"
+
+[[mgr.prepend_keymap]]
+on = "="
+run = "plugin zoom -1"
+desc = "Zoom the preview out"

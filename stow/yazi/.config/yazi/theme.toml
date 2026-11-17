@@ -1,0 +1,153 @@
+# dotfiles · yazi theme
+#
+# One palette rule: black surfaces, white ink, grey for metadata, red for the
+# single thing that is live (the hovered entry, an error, a deletion).
+#
+# Every value below is an ANSI colour name, never a hex value. Yazi then paints
+# with the terminal's own 16 colours, which the Glyph shell rewrites whenever
+# the wallpaper palette changes, so yazi, ghostty, tmux and the prompt all move
+# together without a single hardcoded colour.
+
+#:schema https://yazi-rs.github.io/schemas/theme.json
+
+[flavor]
+dark = ""
+light = ""
+
+[mgr]
+cwd = { fg = "white", bold = true }
+find_keyword = { fg = "red", bold = true }
+find_position = { fg = "red", bold = true }
+symlink_target = { fg = "darkgray", italic = true }
+
+# Markers are filled blocks in the accent colour: visible without being loud.
+marker_copied = { fg = "red", bg = "red" }
+marker_cut = { fg = "darkgray", bg = "darkgray" }
+marker_marked = { fg = "white", bg = "white" }
+marker_selected = { fg = "gray", bg = "gray" }
+marker_symbol = "│"
+
+count_copied = { fg = "black", bg = "red" }
+count_cut = { fg = "black", bg = "darkgray" }
+count_selected = { fg = "black", bg = "white" }
+
+border_symbol = "│"
+border_style = { fg = "darkgray" }
+
+# A monochrome syntect theme with a single red accent, shipped next to this file.
+syntect_theme = "~/.config/yazi/glyph.tmTheme"
+
+[tabs]
+active = { fg = "black", bg = "white", bold = true }
+inactive = { fg = "darkgray", bg = "reset" }
+# Flat separators: the Nothing look has no powerline chevrons.
+sep_inner = { open = " ", close = " " }
+sep_outer = { open = " ", close = " " }
+
+[mode]
+normal_main = { fg = "black", bg = "white", bold = true }
+normal_alt = { fg = "white", bg = "darkgray" }
+select_main = { fg = "black", bg = "red", bold = true }
+select_alt = { fg = "white", bg = "darkgray" }
+unset_main = { fg = "black", bg = "red", bold = true }
+unset_alt = { fg = "white", bg = "darkgray" }
+
+[indicator]
+parent = { fg = "darkgray" }
+current = { fg = "black", bg = "white" }
+preview = { fg = "white" }
+padding = { open = " ", close = " " }
+
+[status]
+overall = {}
+sep_left = { open = " ", close = " " }
+sep_right = { open = " ", close = " " }
+perm_sep = { fg = "darkgray" }
+perm_type = { fg = "white" }
+perm_read = { fg = "gray" }
+perm_write = { fg = "red" }
+perm_exec = { fg = "white", bold = true }
+progress_label = { fg = "white", bold = true }
+progress_normal = { fg = "red", bg = "darkgray" }
+progress_error = { fg = "black", bg = "red" }
+
+[which]
+border = { fg = "darkgray" }
+cols = 3
+mask = {}
+cand = { fg = "white" }
+rest = { fg = "darkgray" }
+desc = { fg = "gray" }
+separator = "  "
+separator_style = { fg = "darkgray" }
+
+[confirm]
+border = { fg = "darkgray" }
+title = { fg = "white", bold = true }
+body = {}
+list = {}
+btn_yes = { fg = "black", bg = "red", bold = true }
+btn_no = { fg = "gray" }
+btn_labels = ["  yes  ", "  no  "]
+
+[spot]
+border = { fg = "darkgray" }
+title = { fg = "white", bold = true }
+tbl_col = { fg = "white", bold = true }
+tbl_cell = { fg = "gray" }
+
+[notify]
+title_info = { fg = "white", bold = true }
+title_warn = { fg = "red", bold = true }
+title_error = { fg = "red", bold = true }
+
+[pick]
+border = { fg = "darkgray" }
+active = { fg = "red", bold = true }
+inactive = { fg = "gray" }
+
+[input]
+border = { fg = "darkgray" }
+title = { fg = "gray" }
+value = { fg = "white" }
+selected = { fg = "black", bg = "white" }
+
+[cmp]
+border = { fg = "darkgray" }
+active = { fg = "black", bg = "white" }
+inactive = { fg = "gray" }
+
+[tasks]
+border = { fg = "darkgray" }
+title = { fg = "white", bold = true }
+hovered = { fg = "red", bold = true }
+
+[help]
+border = { fg = "darkgray" }
+chord = { fg = "red" }
+action = { fg = "white" }
+hovered = { fg = "black", bg = "white", bold = true }
+
+# ── git.yazi ────────────────────────────────────────────────────────────────
+# Status signs follow the same rule: white for staged (safe), red for anything
+# that is not committed yet.
+[git]
+unknown = { fg = "darkgray" }
+ignored = { fg = "darkgray" }
+untracked = { fg = "gray" }
+unstaged = { fg = "red" }
+staged = { fg = "white", bold = true }
+added = { fg = "white", bold = true }
+deleted = { fg = "red", bold = true }
+updated = { fg = "red" }
+clean = { fg = "darkgray" }
+
+unknown_sign = " "
+ignored_sign = ""
+untracked_sign = "?"
+unstaged_sign = "M"
+staged_sign = "A"
+added_sign = "A"
+deleted_sign = "D"
+updated_sign = "M"
+clean_sign = " "

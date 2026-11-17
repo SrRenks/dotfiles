@@ -1,0 +1,125 @@
+# dotfiles · yazi
+#
+# Yazi is the default way this desktop looks at a directory: it is the shell's
+# picker (Ctrl+O in fish), the tmux popup (prefix+e), the Hyprland file manager
+# (SUPER+E) and the handler for inode/directory. This file makes it a real file
+# manager rather than a preview toy: per-type openers, a preview pipeline that
+# already knows what is installed here, and memory bounds that stop a folder of
+# ten thousand photos from eating the machine.
+#
+# Validate after editing:  yazi --debug      (prints config errors)
+# Reload in place:         r
+
+#:schema https://yazi-rs.github.io/schemas/yazi.json
+
+[mgr]
+# [parent, current, preview], a wide preview: this is a viewer first.
+ratio = [1, 4, 4]
+sort_by = "natural"
+sort_sensitive = false
+sort_reverse = false
+sort_dir_first = true
+sort_translit = true
+linemode = "size_and_mtime"
+show_hidden = false
+show_symlink = true
+scrolloff = 3
+mouse_events = ["click", "scroll", "drag"]
+
+[preview]
+wrap = "yes"
+tab_size = 4
+# Bounds are for previews, not wallpapers: big enough for a photo, small enough
+# that a directory of them stays cheap.
+max_width = 900
+max_height = 1200
+cache_dir = ""
+image_delay = 30
+image_filter = "lanczos3"
+image_quality = 80
+ueberzug_scale = 1
+ueberzug_offset = [0, 0, 0, 0]
+
+# ── openers ──────────────────────────────────────────────────────────────────
+# Every opener is declared here, including the ones that match the stock
+# defaults: this block is the single place that answers "what opens a video on
+# this machine". `open` runs the first entry, `open --interactive` (O) lists all.
+[opener]
+edit = [
+	{ run = '${EDITOR:-nvim} %s', desc = "$EDITOR", block = true },
+	{ run = "code -w %s", desc = "code", block = true, for = "windows" },
+]
+play = [
+	{ run = "mpv --force-window=immediate %s", desc = "mpv", orphan = true },
+	{ run = "xdg-open %s1", desc = "System player", orphan = true, for = "linux" },
+	{ run = "mediainfo %s1; echo 'Press enter to exit'; read _", block = true, desc = "Media info", for = "unix" },
+]
+open = [
+	{ run = "xdg-open %s1", desc = "System handler", for = "linux" },
+	{ run = "open %s", desc = "System handler", for = "macos" },
+	{ run = 'start "" %s1', desc = "System handler", orphan = true, for = "windows" },
+]
+reveal = [
+	{ run = "xdg-open %d1", desc = "Open parent folder", for = "linux" },
+	{ run = "open -R %s1", desc = "Reveal in Finder", for = "macos" },
+	{ run = "clear; exiftool %s1; echo 'Press enter to exit'; read _", desc = "EXIF", block = true, for = "unix" },
+]
+extract = [
+	{ run = "ya pub extract --list %s", desc = "Extract here" },
+]
+download = [
+	{ run = "ya emit download --open %S", desc = "Download and open" },
+	{ run = "ya emit download %S", desc = "Download" },
+]
+trash = [
+	{ run = "ya pub trash-restore --list %S", desc = "Restore from trash" },
+	{ run = "ya pub trash-empty --list %S", desc = "Empty trash" },
+]
+
+[open]
+# prepend_rules wins over the stock rules; the stock ones still apply after, so
+# this only overrides what this machine has an opinion about.
+prepend_rules = [
+	# Code and config: edit, never "open in the system app".
+	{ mime = "text/*", use = ["edit", "reveal"] },
+	{ mime = "application/{json,ndjson,javascript,xml,x-shellscript,wine-extension-ini}", use = ["edit", "reveal"] },
+	{ url = "*.{md,markdown,toml,yaml,yml,conf,cfg,ini,env,service,desktop,lock}", use = ["edit", "reveal"] },
+	# Media: mpv is the point of a 780M.
+	{ mime = "video/*", use = ["play", "reveal"] },
+	{ mime = "audio/*", use = ["play", "reveal"] },
+	# Images: the desktop viewer, not the pager.
+	{ mime = "image/*", use = ["open", "reveal"] },
+	# Executables and installers.
+	{ url = "*.{AppImage,appimage,sh,run,bin}", use = ["open", "reveal"] },
+	# Archives unpack into a directory instead of "opening".
+	{ mime = "application/{zip,gzip,x-tar,x-bzip2,x-xz,zstd,rar,x-7z-compressed,x-rpm,x-deb}", use = ["extract", "reveal"] },
+]
+
+[tasks]
+file_workers = 3
+plugin_workers = 5
+fetch_workers = 5
+preload_workers = 2
+process_workers = 5
+bizarre_retry = 3
+# Hard ceiling on decoded images: 256 MB, and 8000x8000 px per image.
+image_alloc = 268435456
+image_bound = [8000, 8000]
+suppress_preload = false
+
+[plugin]
+# git.yazi: file statuses straight into the linemode. One `git status` per
+# directory change, which is the price of knowing what you are about to commit.
+prepend_fetchers = [
+	{ url = "*", run = "git", group = "git" },
+	{ url = "*/", run = "git", group = "git" },
+]
+
+[input]
+cursor_blink = false
+
+[which]
+sort_by = "none"
+sort_sensitive = false
+sort_reverse = false
+sort_translit = false

@@ -1,0 +1,5 @@
+# nothing generated should ever be committed here
+*.log
+.tmuxsock/
+.sock/
+*.bak

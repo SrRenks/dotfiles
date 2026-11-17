@@ -1,0 +1,73 @@
+# deps/units.toml, this is the boundary between "ours" and "reddoted's"
+#
+# A unit is one stow package and the packages it actually needs. The rule for
+# what belongs here:
+#
+#   A unit must work on a machine that has no Hyprland, no Quickshell and no
+#   reddoted. If it cannot, it stays in reddoted.
+#
+# That is why hypr, quickshell, gtk/qt, the fonts, sddm, the ThinkPad helper and
+# everything behind pkexec are absent: they are one system, not installable
+# pieces, and copying them here would fork reddoted instead of complementing it.
+#
+#   ./install.sh --stow fish          only fish and what it calls
+#   ./install.sh --stow yazi,tmux     two units
+#
+# A stranger can also skip the installer entirely, see docs/STANDALONE.md.
+
+[unit.ghostty]
+desc = "Ghostty profile: Nothing palette, no chrome, splits, notifications"
+packages = ["ghostty", "ttf-jetbrains-mono-nerd"]
+manual = "stow -t ~ ghostty"
+
+[unit.fish]
+desc = "fish: conf.d fragments, six functions, fisher plugin manifest"
+packages = ["fish", "starship", "eza", "zoxide", "direnv", "fzf", "fd", "bat", "ripgrep", "yazi"]
+manual = "stow -t ~ fish"
+note = "yazi is in the list because the `y` and `n` functions open it"
+
+[unit.starship]
+desc = "Starship prompt: ANSI only, transient, left = where, right = what happened"
+packages = ["starship", "ttf-jetbrains-mono-nerd"]
+manual = "stow -t ~ starship"
+
+[unit.tmux]
+desc = "tmux 3.8, no plugin manager, popups for yazi/lazygit/btop/sessions"
+packages = ["tmux", "fzf", "yazi", "lazygit", "btop"]
+manual = "stow -t ~ tmux"
+
+[unit.yazi]
+desc = "Yazi as the file manager: openers, 11 pinned plugins, Glyph theme"
+packages = ["yazi", "fd", "fzf", "ripgrep", "bat", "7zip", "ffmpeg", "poppler", "mpv", "imagemagick", "udisks2"]
+manual = "stow -t ~ yazi && (cd ~/.config/yazi && ya pkg install)"
+note = "plugins are not in git: `ya pkg install` reads package.toml"
+
+[unit.fastfetch]
+desc = "fastfetch: logo off, ANSI keys, palette swatches"
+packages = ["fastfetch"]
+manual = "stow -t ~ fastfetch"
+
+# The desktop itself, as one more installable unit. Everything a `--profile
+# standard` run does is described here, so there is a single vocabulary:
+#   ./install.sh --stow reddoted          the full rice
+#   ./install.sh --stow reddoted --all    plus the optional integrations
+[unit.reddoted]
+desc = "The full desktop: Hyprland, Quickshell, GTK/Qt palette, fonts, terminal"
+kind = "reddoted"
+groups = ["base", "graphics", "session", "audio", "network", "power", "shell-core", "shell-extras", "input", "terminal", "terminal-tools", "fonts", "icons", "apps", "aur-theming"]
+optional_groups = ["greeter", "flatpak-apps", "geo", "updates", "thinkpad", "aur-cursor", "yazi-extras", "audio-tools"]
+manual = "git clone https://github.com/SrRenks/reddoted ~/Projects/reddoted && ~/Projects/reddoted/install.sh"
+note = "reddoted owns the terminal configs too, so the hub's fish/ghostty/tmux/yazi/starship are not stowed in this mode"
+
+[unit.core]
+always = true
+desc = "Not an add-on: these are the configs this machine always has. git, bat and ripgrep"
+packages = ["git", "bat", "ripgrep"]
+manual = "stow -t ~ core"
+note = "keeps the includeIf identity blocks and the gh credential helper verbatim; stowed by every profile"
+
+[unit.personal]
+desc = "Hyprland personal overrides: monitors and binds (reddoted owns the rest)"
+packages = []
+requires_reddoted = true
+manual = "stow -t ~ personal"

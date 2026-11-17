@@ -1,0 +1,117 @@
+# dotfiles: Ghostty profile. Self-contained, no include, no generated file,
+# no other repository involved. The palette below is the Nothing set: black,
+# white, one red.
+#
+# If reddoted is installed on the same machine it owns ~/.config/ghostty/config
+# instead (profile `standard`/`full`), and this file is not stowed at all.
+#
+# Reload: ctrl+shift+,   ·   validate: ghostty +validate-config
+
+# ── type ─────────────────────────────────────────────────────────────────────
+font-family = Space Mono
+font-family = JetBrainsMono Nerd Font
+font-size = 12
+adjust-cell-height = 8%
+# No ligatures: Space Mono has none, keep it honest.
+font-feature = -calt
+font-feature = -liga
+
+# ── memory ───────────────────────────────────────────────────────────────────
+# Ghostty defaults to 50000000 bytes (50 MB) of scrollback per window, with no
+# line limit. tmux keeps its own history inside the pane, so paying 50 MB here
+# buys a duplicate of what the multiplexer already has. 20 MB is still tens of
+# thousands of lines and bounds the worst case.
+scrollback-limit-bytes = 20000000
+
+# ── window ───────────────────────────────────────────────────────────────────
+window-padding-x = 14
+window-padding-y = 12
+window-padding-balance = true
+window-decoration = none
+gtk-single-instance = true
+gtk-titlebar = false
+# tmux owns windows; tabs stay out of the way.
+window-show-tab-bar = never
+window-inherit-working-directory = true
+window-new-tab-position = current
+confirm-close-surface = false
+
+# ── cursor & mouse ───────────────────────────────────────────────────────────
+cursor-style = block
+cursor-style-blink = false
+mouse-hide-while-typing = true
+# Shift stays available for native selection inside tmux and nvim.
+mouse-shift-capture = false
+copy-on-select = clipboard
+keybind = ctrl+v=paste_from_clipboard
+
+# ── shell integration ────────────────────────────────────────────────────────
+# fish is the login shell. ssh-env and ssh-terminfo make `xterm-ghostty` work on
+# remote hosts without planting terminfo by hand; sudo keeps the integration
+# across sudo so jump-to-prompt and command-finish still fire.
+shell-integration = fish
+shell-integration-features = cursor,sudo,title,ssh-env,ssh-terminfo,path
+
+# ── notifications ────────────────────────────────────────────────────────────
+# Long commands notify through the desktop notification server the Glyph shell
+# already provides, but only when the window is not focused.
+notify-on-command-finish = unfocused
+notify-on-command-finish-action = no-bell,notify
+notify-on-command-finish-after = 5s
+bell-features = no-system,no-audio,attention,title
+
+# ── clipboard ────────────────────────────────────────────────────────────────
+clipboard-paste-protection = true
+clipboard-paste-bracketed-safe = true
+clipboard-trim-trailing-spaces = true
+selection-clear-on-typing = true
+
+# ── splits ───────────────────────────────────────────────────────────────────
+# Flat, no fade: an unfocused split is still ink on black.
+unfocused-split-opacity = 1
+split-divider-color = #2A2A2A
+keybind = ctrl+shift+enter=toggle_split_zoom
+keybind = ctrl+shift+equal=equalize_splits
+
+# ── quick terminal ───────────────────────────────────────────────────────────
+# A dropdown surface on the layer the compositor can rule (gtk-quick-terminal-namespace).
+# Toggle from inside Ghostty with super+grave, or from Hyprland with a layer rule.
+quick-terminal-position = top
+quick-terminal-screen = mouse
+quick-terminal-autohide = true
+gtk-quick-terminal-layer = overlay
+gtk-quick-terminal-namespace = ghostty-quick-terminal
+keybind = super+grave_accent=toggle_quick_terminal
+
+# ── links & palette ─────────────────────────────────────────────────────────
+link-url = true
+link-previews = true
+keybind = ctrl+shift+slash=toggle_command_palette
+
+# The theme, stated in full. The terminal does not depend on the desktop config
+# for colour any more: these 16 slots are the whole palette.
+background = #0D0D0D
+foreground = #F6F6F6
+cursor-color = #F6F6F6
+cursor-text = #0D0D0D
+
+selection-background = #3E4451
+selection-foreground = #FFFFFF
+
+palette = 0=#0D0D0D
+palette = 1=#FF3F4F
+palette = 2=#81F900
+palette = 3=#FFD945
+palette = 4=#00A0E4
+palette = 5=#E542FF
+palette = 6=#19D1E5
+palette = 7=#F6F6F6
+
+palette = 8=#696969
+palette = 9=#FF9700
+palette = 10=#98C379
+palette = 11=#E5A422
+palette = 12=#56B6C2
+palette = 13=#E373CE
+palette = 14=#6AEBF7
+palette = 15=#FFFFFF

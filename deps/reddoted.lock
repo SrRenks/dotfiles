@@ -1,0 +1,18 @@
+# Which reddoted this repo pins.
+#
+# The bootstrap treats reddoted as a normal clone, not a submodule: submodules
+# detach HEAD and surprise anyone who edits inside them, and reddoted's own
+# installer expects a working tree it can manage.
+#
+#   fresh machine  ~/Projects/reddoted is cloned and checked out at `rev`
+#   already here   left alone; the installer reports if it drifted
+#   ./install.sh --update   moves it to `rev` (refuses on a dirty tree)
+#
+# Bump `rev` deliberately, after trying the change locally:
+#   git -C ~/Projects/reddoted log --oneline -1
+
+[reddoted]
+url = "https://github.com/SrRenks/reddoted"
+path = "~/Projects/reddoted"
+rev = "c9bc3f0"
+branch = "main"

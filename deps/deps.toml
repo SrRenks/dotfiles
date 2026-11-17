@@ -1,0 +1,221 @@
+# SrRenks dotfiles, dependency manifest
+#
+# The single source of truth for "what has to exist on the machine before the
+# desktop works". The bootstrap reads this file; nothing else in the repo is
+# allowed to name a package.
+#
+# Rule followed throughout: a group is `optional = false` only when something
+# already committed would be visibly broken without it. Window rules that name
+# krita/godot/gamescope are not dependencies, they are pattern matches.
+
+[meta]
+schema = 1
+target = "arch"                      # official repos only; AUR is a separate list
+description = "SrRenks dotfiles: installs reddoted and everything it calls"
+reddoted = "https://github.com/SrRenks/reddoted"
+aur_helper = "yay"                   # bootstrapped from the AUR by the installer
+
+# ── version floors the configs actually rely on ───────────────────────────────
+# Not pinning, these are the versions the committed config was validated
+# against. Below them something silently degrades.
+[versions]
+hyprland  = "0.55"      # keybinds.lua notes: bindin catchall broken since 0.55
+quickshell = "0.3.2"    # shell.qml / GlyphPalette.qml API
+ghostty   = "1.4.0"     # config validated with `ghostty +validate-config`
+tmux      = "3.8"       # `theme detect`, `pane-scrollbars`, `pane-status-*`
+yazi      = "26.9.1"    # config schema; `ya pkg` needs >= 25.5.31
+fish      = "4.0"       # conf.d + current builtins
+starship  = "1.20"      # right_format in fish, enable_transience
+
+# ── required ─────────────────────────────────────────────────────────────────
+
+[[group]]
+id = "base"
+desc = "Build tools (AUR helper, makepkg), stow (the link engine), plus what every script here calls"
+pacman = ["base-devel", "git", "curl", "jq", "python", "stow"]
+
+[[group]]
+id = "graphics"
+desc = "Hyprland + Quickshell rendering. AMD Radeon 780M aboard; swap the second half for intel/nvidia on another machine"
+pacman = ["mesa", "vulkan-radeon", "libva-mesa-driver"]
+machine = "radeon-780m"
+
+[[group]]
+id = "session"
+desc = "Compositor, idle/night-light/picker, portals, shell, keyring (AI keys go to the secret service via secret-tool), power/battery"
+pacman = [
+  "hyprland", "hypridle", "hyprsunset", "hyprpicker",
+  "xdg-desktop-portal-hyprland", "xdg-desktop-portal-gtk",
+  "quickshell", "polkit-gnome", "gnome-keyring", "libsecret", "upower", "xdg-user-dirs",
+]
+services_system = []
+services_user = []
+
+[[group]]
+id = "audio"
+desc = "PipeWire stack; wpctl is called by the OSD and the volume keys"
+pacman = ["pipewire", "pipewire-pulse", "pipewire-alsa", "wireplumber"]
+services_user = ["pipewire-pulse.socket", "wireplumber"]
+
+[[group]]
+id = "network"
+desc = "NetworkManager; nmcli is read by Prefs, bluetoothctl by the buds panel"
+pacman = ["networkmanager", "bluez", "bluez-utils"]
+services_system = ["NetworkManager", "bluetooth"]
+
+[[group]]
+id = "power"
+desc = "TLP is the power manager on this machine (reddot-tlp, fan curve). power-profiles-daemon is the upstream default but conflicts, see [[conflict]]"
+pacman = ["tlp"]
+services_system = ["tlp"]
+
+[[group]]
+id = "shell-core"
+desc = "What the QML shell calls in every session: bar, OSD, media, clipboard, screenshots, notifications. Losing one of these loses a panel, not a feature"
+pacman = ["brightnessctl", "playerctl", "wl-clipboard", "cliphist", "grim", "slurp", "imagemagick", "libnotify"]
+provides = { magick = "imagemagick" }
+
+[[group]]
+id = "shell-extras"
+desc = "Features the desktop survives without: screenshot editor, screen recorder, calculator in the launcher, trash expiry, image pipeline"
+pacman = ["swappy", "gpu-screen-recorder", "libqalculate", "libvips", "trash-cli"]
+provides = { qalc = "libqalculate", trash = "trash-cli" }
+
+[[group]]
+id = "input"
+desc = "ydotool types into the focused field (bind: paste clipboard). Needs the input group and its user service"
+pacman = ["ydotool"]
+groups = ["input", "video"]
+services_user = ["ydotool"]
+note = "dotool is the alternative already present on the dev machine; the bind in keybinds.lua says ydotool, so this is the one the config expects"
+
+[[group]]
+id = "terminal"
+desc = "The terminal stack: Ghostty renders it, fish drives it, tmux/tabs, yazi is the file manager, starship the prompt"
+pacman = ["ghostty", "fish", "tmux", "yazi", "starship"]
+
+[[group]]
+id = "terminal-tools"
+desc = "Binaries the terminal configs call: eza/zoxide/direnv (fish), fd/fzf (pickers), bat (preview + cat), 7zip/ffmpeg/poppler (yazi previews), lazygit/mpv/btop/cava/fastfetch (popups and widgets)"
+pacman = [
+  "eza", "zoxide", "direnv", "fd", "fzf", "bat", "ripgrep",
+  "7zip", "ffmpeg", "poppler", "lazygit", "mpv",
+  "btop", "cava", "fastfetch",
+]
+
+[[group]]
+id = "fonts"
+desc = "JetBrains Mono Nerd (glyphs in bar/yazi/eza), Space Mono (Glyph typeface, bundled in reddoted), CJK for kaomoji, emoji for Charms"
+pacman = ["ttf-jetbrains-mono-nerd", "noto-fonts", "noto-fonts-cjk", "noto-fonts-emoji"]
+
+[[group]]
+id = "icons"
+desc = "Papirus/Rice folder icons and the dark GTK base the shell's gtk.css layers on"
+pacman = ["papirus-icon-theme", "adw-gtk-theme"]
+
+[[group]]
+id = "audio-tools"
+desc = "pavucontrol and easyeffects: the mixer and the effects bypass, independent of any desktop shell (Super+Shift+E calls easyeffects)"
+pacman = ["pavucontrol", "easyeffects"]
+optional = true
+
+[[group]]
+id = "apps"
+desc = "Apps named by the shell's defaults (variables.lua) and checked by Prefs > SYSTEM"
+pacman = ["dolphin", "vscodium"]
+provides = { codium = "vscodium" }
+
+[[group]]
+id = "thinkpad"
+desc = "Fan curve and chassis LEDs. The shell pkexecs /usr/local/bin/reddot-thinkpad, which rewrites /etc/thinkfan.yaml and restarts thinkfan, it never touches the fan directly"
+aur = ["thinkfan"]
+pacman = ["tlp"]
+optional = true
+note = "thinkfan is not in the official repos (pacman -Si thinkfan: not found); TLP is the battery side"
+
+[[group]]
+id = "yazi-extras"
+desc = "Optional binaries behind yazi features: mount plugin (udisksctl), EXIF reveal opener (exiftool)"
+pacman = ["udisks2", "perl-image-exiftool"]
+optional = true
+
+[[group]]
+id = "updates"
+desc = "The bar's update widget shells out to package-updates.sh, which probes pacman-flavoured sources. checkupdates avoids a root refresh; without it the script falls back to fakeroot"
+pacman = ["pacman-contrib"]
+optional = true
+
+[[group]]
+id = "geo"
+desc = "execs.lua starts the geoclue demo agent for the weather panel. Absent, the panel just has no location"
+pacman = ["geoclue"]
+optional = true
+
+# ── AUR ──────────────────────────────────────────────────────────────────────
+
+[[group]]
+id = "aur-theming"
+desc = "Qt platform theme engine + the Darkly style: Prefs and Qt apps follow the palette through these"
+aur = ["qtengine", "darkly-bin"]
+optional = false
+
+[[group]]
+id = "aur-cursor"
+desc = "Bibata cursor, referenced by the GTK/Hyprland cursor setting"
+aur = ["bibata-cursor-theme-bin"]
+optional = true
+
+# ── Flatpak ──────────────────────────────────────────────────────────────────
+
+[[group]]
+id = "flatpak-apps"
+desc = "Zen is a Flatpak here; variables.lua launches it with `flatpak run`. Prefs > SYSTEM reports it as missing otherwise"
+flatpak = ["app.zen_browser.zen"]
+optional = true
+
+# ── greeter ──────────────────────────────────────────────────────────────────
+
+[[group]]
+id = "greeter"
+desc = "SDDM + the Glyph greeter theme. Not used on the dev machine (it boots Hyprland directly), so it stays optional; install.sh --sddm copies the theme"
+pacman = ["sddm"]
+services_system = ["sddm"]
+optional = true
+
+# ── what cannot coexist ──────────────────────────────────────────────────────
+
+[[conflict]]
+packages = ["tlp", "power-profiles-daemon"]
+reason = "Both own CPU/GPU power state. reddoted's install.sh enables power-profiles-daemon; this machine runs TLP (reddot-tlp, ThinkPad fan curve). The bootstrap installs TLP and skips PPD."
+
+[[conflict]]
+packages = ["ydotool", "dotool"]
+reason = "Same job, both need uinput. The committed bind says ydotool; dotool is what the dev machine happens to have installed."
+
+# ── known gaps in reddoted's own install.sh ─────────────────────────────────
+# Recorded here because the bootstrap must add them; upstream reddoted does not
+# declare them and a fresh machine comes up with a half-working desktop.
+
+[[gap]]
+packages = ["pacman-contrib"]
+why = "checkupdates: the updates widget falls back to a fakeroot pacman -Sy without it"
+
+[[gap]]
+packages = ["udisks2"]
+why = "udisksctl, used by yazi's mount plugin and by Dolphin for removable media"
+
+[[gap]]
+packages = ["fd"]
+why = "yazi `search --via=fd` and fzf's file list; absent, both silently fall back"
+
+[[gap]]
+packages = ["tmux", "yazi", "fzf", "bat", "7zip", "ffmpeg", "poppler", "lazygit", "mpv"]
+why = "the whole terminal stack added in config/{tmux,yazi,fish,ghostty}"
+
+[[gap]]
+packages = ["vscodium"]
+why = "variables.lua opens code with `codium`; Prefs reports it missing"
+
+[[gap]]
+packages = ["flatpak"]
+why = "Zen browser and the bar's flatpak update count"

@@ -1,0 +1,14 @@
+# dev: ripgrep defaults. Read through RIPGREP_CONFIG_PATH, set in fish.
+#
+# Smart case everywhere, hidden files skipped except the ones that matter, and a
+# .gitignore-aware search that still finds things inside ignored build output
+# when you ask with -uu.
+--smart-case
+--hidden
+--glob=!.git/
+--glob=!node_modules/
+--glob=!target/
+--glob=!dist/
+--glob=!build/
+--max-columns=200
+--max-columns-preview

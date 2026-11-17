@@ -1,0 +1,454 @@
+# depends/usage.toml, the evidence behind docs/BY-PACKAGE.md
+#
+# One entry per package: which binary it provides, who calls it, and what stops
+# working when it is not there. `deps/by-package.py` merges this with deps.toml;
+# a package with no entry here is reported as "declared, no direct caller", so
+# the two files cannot drift apart silently.
+#
+# Rule: evidence beats name recognition. `where` names the file that calls it,
+# not the feature it sounds related to.
+
+# ── base ────────────────────────────────────────────────────────────────────
+[uses.base-devel]
+bin = "makepkg"
+where = "install.sh builds yay-bin from the AUR; also compiles any AUR package"
+breaks = "no AUR helper → qtengine, darkly-bin and thinkfan cannot be installed"
+
+[uses.git]
+bin = "git"
+where = "install.sh (clone reddoted), fisher, ya pkg, install.sh --update"
+breaks = "nothing can be fetched or updated"
+
+[uses.curl]
+bin = "curl"
+where = "services/Weather.qml (api.open-meteo.com), services/Media.qml (lrclib.net), fisher bootstrap, package-updates.sh"
+breaks = "weather, lyrics and the flatpak/aur probe go silent"
+note = "the shell also calls it for the AI panels' provider APIs"
+
+[uses.jq]
+bin = "jq"
+where = "hypr/scripts/{startup-run,shortcuts-apply,special-toggle,minimize-toggle}.sh, package-updates.sh, system/package-updates.sh"
+breaks = "autostart, custom shortcuts and the update parser all exit 0 doing nothing"
+note = "silent: the scripts test for jq and give up"
+
+[uses.python]
+bin = "python3"
+where = "deps/query.py and deps/check.py (this repo), Prefs calculators"
+breaks = "the installer cannot read its own manifest"
+
+[uses.stow]
+bin = "stow"
+where = "install.sh step 7, the only thing that puts configs in $HOME"
+breaks = "no links at all"
+
+# ── graphics ────────────────────────────────────────────────────────────────
+[uses.mesa]
+bin = "libGL"
+where = "Hyprland and Quickshell render through it; mpv and yazi decode with it"
+breaks = "no desktop at all"
+
+[uses.vulkan-radeon]
+bin = "libvulkan"
+where = "Hyprland's Vulkan renderer, gpu-screen-recorder"
+breaks = "software rendering, recording fails"
+note = "machine-specific: intel → vulkan-intel, nvidia → nvidia-utils"
+
+[uses.libva-mesa-driver]
+bin = "libva"
+where = "hardware video decode in mpv (yazi's video preview)"
+breaks = "video previews decode on the CPU"
+
+# ── session ─────────────────────────────────────────────────────────────────
+[uses.hyprland]
+bin = "hyprctl"
+where = "27 files: keybinds.lua, rules.lua, bar/Bar.qml, Apply.qml, every script"
+breaks = "nothing can move, colour or configure a window"
+
+[uses.hypridle]
+bin = "hypridle"
+where = "settings/Rules.qml writes ~/.config/demonshot/hypridle.conf and does pkill -x hypridle; exec hypridle -c"
+breaks = "screen never blanks or locks on idle"
+
+[uses.hyprsunset]
+bin = "hyprsunset"
+where = "keybind (blue-light filter), Prefs"
+breaks = "night light does nothing"
+
+[uses.hyprpicker]
+bin = "hyprpicker"
+where = "keybind, colour picker from the wallpaper"
+breaks = "picker bind does nothing"
+
+[uses.xdg-desktop-portal-hyprland]
+bin = "xdg-desktop-portal-hyprland"
+where = "portal for screenshots and screencast"
+breaks = "screenshot/recording portals fail; some Flatpak apps cannot capture"
+
+[uses.xdg-desktop-portal-gtk]
+bin = "xdg-desktop-portal-gtk"
+where = "file chooser dialogs, settings portal"
+breaks = "flatpak apps lose file dialogs and dark mode"
+
+[uses.quickshell]
+bin = "qs"
+where = "the shell itself; `rice` CLI; IPC (Super+Shift+F glass toggle)"
+breaks = "no shell"
+
+[uses.polkit-gnome]
+bin = "polkit-gnome-authentication-agent-1"
+where = "the password prompt behind every pkexec (ACPI profile, TLP charge, ThinkPad helper)"
+breaks = "the privileged pages hang with no prompt"
+
+[uses.gnome-keyring]
+bin = "gnome-keyring-daemon"
+where = "execs.lua starts it with --components=secrets; the AI panel stores keys here"
+breaks = "AI keys cannot be saved"
+
+[uses.libsecret]
+bin = "secret-tool"
+where = "prefs/pages/AiPage.qml, secret-tool store/lookup/clear, service glyph-ai"
+breaks = "saving an API key silently does nothing"
+
+[uses.upower]
+bin = "upower"
+where = "bar battery widget, Prefs BATTERY"
+breaks = "no battery percentage, no charge state"
+
+[uses.xdg-user-dirs]
+bin = "xdg-user-dir"
+where = "hypr/scripts/shot-quick.sh resolves PICTURES; install.sh runs xdg-user-dirs-update"
+breaks = "screenshots fall back to ~/Pictures"
+
+# ── audio ───────────────────────────────────────────────────────────────────
+[uses.pipewire]
+bin = "pipewire"
+where = "the audio server behind wpctl and every player"
+breaks = "no sound"
+
+[uses.pipewire-pulse]
+bin = "pipewire-pulse"
+where = "PulseAudio compatibility, needed by pavucontrol and playerctl"
+breaks = "mixer apps cannot see streams"
+
+[uses.pipewire-alsa]
+bin = "libasound_module_pcm_pipewire"
+where = "ALSA compatibility for apps without a Pulse backend"
+breaks = "some apps have no audio"
+
+[uses.wireplumber]
+bin = "wpctl"
+where = "keybinds (volume up/down/mute), the volume OSD"
+breaks = "volume keys do nothing"
+
+# ── network ─────────────────────────────────────────────────────────────────
+[uses.networkmanager]
+bin = "nmcli"
+where = "network panel in Prefs and the bar"
+breaks = "no connection list or toggle"
+
+[uses.bluez]
+bin = "bluetoothctl"
+where = "buds/ panel (Nothing / CMF earbuds), bluetooth settings"
+breaks = "no Bluetooth at all"
+
+[uses.bluez-utils]
+bin = "bluetoothctl"
+where = "same panel, this package is what ships the CLI"
+breaks = "the buds panel has no backend"
+
+# ── power ───────────────────────────────────────────────────────────────────
+[uses.tlp]
+bin = "tlp"
+where = "prefs/pages/BatteryPage.qml: pkexec tlp setcharge <start> <end> BAT0; services/EdgeService.qml: pkexec tlp fullcharge"
+breaks = "charge thresholds page and the bar's fullcharge action"
+
+# ── shell-core ──────────────────────────────────────────────────────────────
+[uses.brightnessctl]
+bin = "brightnessctl"
+where = "services/Backlight.qml, MuteLeds.qml, ThinkPadLedGuard.qml; brightness OSD"
+breaks = "brightness keys, LED mute indicator"
+
+[uses.playerctl]
+bin = "playerctl and mpris-proxy"
+where = "services/Media.qml, media keybinds; execs.lua runs mpris-proxy at login"
+breaks = "now-playing panel and media keys"
+
+[uses.wl-clipboard]
+bin = "wl-copy, wl-paste"
+where = "charms (copy emoji), clip panel, and the login watcher wl-paste --watch cliphist store"
+breaks = "clipboard history is never filled; copy actions fail"
+
+[uses.cliphist]
+bin = "cliphist"
+where = "clip/Clip.qml, Super+V history, the two wl-paste watchers at login"
+breaks = "no clipboard history"
+
+[uses.grim]
+bin = "grim"
+where = "hypr/scripts/shot-quick.sh (all three screenshot modes)"
+breaks = "no screenshots"
+
+[uses.slurp]
+bin = "slurp"
+where = "hypr/scripts/shot-quick.sh region mode"
+breaks = "region select does not start"
+
+[uses.imagemagick]
+bin = "magick"
+where = "wallpaper pipeline and thumbnails (rice), yazi's zoom plugin"
+breaks = "wallpaper thumbnails and image zoom"
+
+[uses.libnotify]
+bin = "notify-send"
+where = "8 files: services/Ai.qml, EdgeService.qml, notifications on state changes"
+breaks = "shell notifications silently drop"
+
+# ── shell-extras ────────────────────────────────────────────────────────────
+[uses.swappy]
+bin = "swappy"
+where = "shot/Editor.qml after a screenshot; Prefs > SYSTEM checks it"
+breaks = "annotating a screenshot; the System page reports it missing"
+
+[uses.gpu-screen-recorder]
+bin = "gpu-screen-recorder"
+where = "hypr/scripts/rec-toggle.sh, Super+R"
+breaks = "no screen recording"
+
+[uses.libqalculate]
+bin = "qalc"
+where = "launcher/Launcher.qml mode 3 (= expression); Prefs > SYSTEM checks it"
+breaks = "the launcher's calculator mode shows nothing"
+
+[uses.libvips]
+bin = "vips"
+where = "image processing in the wallpaper/thumbnail path"
+breaks = "wallpaper tones fall back to a slow path"
+
+[uses.trash-cli]
+bin = "trash"
+where = "execs.lua runs trash-empty 30 at login; Prefs > SYSTEM checks it"
+breaks = "trash never expires; the System page reports it missing"
+
+# ── input ───────────────────────────────────────────────────────────────────
+[uses.ydotool]
+bin = "ydotool"
+where = "hypr/hyprland/keybinds.lua:247, types the clipboard into the focused field"
+breaks = "that bind does nothing"
+note = "needs the input group and the ydotool user service; dotool is the alternative"
+
+# ── terminal ────────────────────────────────────────────────────────────────
+[uses.ghostty]
+bin = "ghostty"
+where = "variables.lua terminal; every bind that opens a shell; the hub's own stow package"
+breaks = "no terminal"
+note = "standalone profile: the hub ships its config"
+
+[uses.fish]
+bin = "fish"
+where = "the login shell; ghostty runs it; fisher plugins"
+breaks = "the shell falls back to bash, all fish configs are dead"
+
+[uses.tmux]
+bin = "tmux"
+where = "config/tmux/tmux.conf; popups for yazi/lazygit/btop/sessions"
+breaks = "no multiplexer, no popups"
+
+[uses.yazi]
+bin = "yazi"
+where = "SUPER+E, inode/directory, tmux popup, fish Ctrl+O and Alt+Y, `n` with no args"
+breaks = "no file manager anywhere"
+
+[uses.starship]
+bin = "starship"
+where = "conf.d/10-shell.fish"
+breaks = "prompt silently falls back to fish's own"
+
+# ── terminal-tools ──────────────────────────────────────────────────────────
+[uses.eza]
+bin = "eza"
+where = "conf.d/20-aliases.fish, ls, ll, la, lla, lt"
+breaks = "aliases fall back to plain ls"
+
+[uses.zoxide]
+bin = "zoxide"
+where = "conf.d/10-shell.fish, `z` and `cd` become jumps"
+breaks = "cd stops being frecency-aware"
+
+[uses.direnv]
+bin = "direnv"
+where = "conf.d/10-shell.fish hook"
+breaks = "no per-directory .envrc"
+
+[uses.fd]
+bin = "fd"
+where = "yazi `search --via=fd`, FZF_DEFAULT_COMMAND, fish fzf bindings"
+breaks = "yazi search and fzf fall back or fail"
+
+[uses.fzf]
+bin = "fzf"
+where = "fish Ctrl+R/Ctrl+T/Alt+C, tmux sessions popup, fif"
+breaks = "every picker"
+
+[uses.bat]
+bin = "bat"
+where = "`cat` alias, fif preview, MANPAGER, yazi's text preview"
+breaks = "cat loses its palette, man pages lose highlighting"
+
+[uses.ripgrep]
+bin = "rg"
+where = "fish `fif` (search → fzf → nvim), yazi `search --via=rg` (key S), FZF_DEFAULT_COMMAND fallback"
+breaks = "content search in yazi and fif do nothing"
+
+[uses.7zip]
+bin = "7z"
+where = "yazi archive preview and the extract opener; fish `extract`"
+breaks = "archives stop previewing and extracting"
+
+[uses.ffmpeg]
+bin = "ffmpeg"
+where = "yazi video previewer (frames), ffprobe metadata"
+breaks = "video previews show nothing"
+
+[uses.poppler]
+bin = "pdftoppm"
+where = "yazi PDF previewer"
+breaks = "PDF previews blank"
+
+[uses.lazygit]
+bin = "lazygit"
+where = "tmux popup (prefix+g), fish `lg` abbr"
+breaks = "the git popup exits immediately"
+
+[uses.mpv]
+bin = "mpv"
+where = "yazi `play` opener, video and audio"
+breaks = "opening media falls back to xdg-open"
+
+[uses.btop]
+bin = "btop"
+where = "tmux popup (prefix+b)"
+breaks = "the btop popup exits immediately"
+
+[uses.cava]
+bin = "cava"
+where = "services/Cava.qml runs it with glyph/cava/cava.conf; `cava` alias uses the dots profile"
+breaks = "the bar's spectrum widget is empty"
+
+[uses.fastfetch]
+bin = "fastfetch"
+where = "stow/fastfetch config (hub); reddoted's copy is currently missing"
+breaks = "fastfetch prints its stock output"
+
+# ── fonts ───────────────────────────────────────────────────────────────────
+[uses.ttf-jetbrains-mono-nerd]
+bin = "JetBrainsMono Nerd Font"
+where = "Ghostty fallback font, every icon in the bar, eza --icons, yazi filetype icons"
+breaks = "every glyph becomes a box"
+
+[uses.noto-fonts]
+bin = "Noto Sans"
+where = "fallback for text the mono font lacks"
+breaks = "some glyphs vanish"
+
+[uses.noto-fonts-cjk]
+bin = "Noto Sans CJK"
+where = "charms kaomoji and CJK in file names"
+breaks = "CJK renders as boxes"
+
+[uses.noto-fonts-emoji]
+bin = "Noto Color Emoji"
+where = "charms emoji picker"
+breaks = "emoji render as boxes"
+
+# ── icons ───────────────────────────────────────────────────────────────────
+[uses.papirus-icon-theme]
+bin = "Papirus"
+where = "folder colour theme (`grey` in glyph/term/folders), applied by rice"
+breaks = "stock folder icons"
+
+[uses.adw-gtk-theme]
+bin = "adw-gtk3-dark"
+where = "install.sh sets gsettings gtk-theme; the generated gtk.css layers on top"
+breaks = "GTK apps look unstyled"
+
+# ── audio-tools ─────────────────────────────────────────────────────────────
+[uses.pavucontrol]
+bin = "pavucontrol"
+where = "variables.lua audioSettings, the mixer bind; Prefs > SYSTEM checks it"
+breaks = "the mixer bind does nothing"
+
+[uses.easyeffects]
+bin = "easyeffects"
+where = "keybind Super+Shift+E, effects bypass toggle"
+breaks = "that bind does nothing"
+
+# ── apps ────────────────────────────────────────────────────────────────────
+[uses.dolphin]
+bin = "dolphin"
+where = "variables.lua fileExplorer; Prefs > SYSTEM checks it"
+breaks = "the file-explorer bind does nothing (yazi can replace it)"
+
+[uses.vscodium]
+bin = "codium"
+where = "variables.lua apps.editor (Super+Shift+K); Prefs > SYSTEM checks it"
+breaks = "the editor bind does nothing"
+
+# ── yazi extras ─────────────────────────────────────────────────────────────
+[uses.udisks2]
+bin = "udisksctl"
+where = "yazi mount plugin (key M), Dolphin removable media"
+breaks = "the mount manager lists nothing"
+
+[uses.perl-image-exiftool]
+bin = "exiftool"
+where = "yazi `reveal` opener, EXIF entry"
+breaks = "the EXIF action prints nothing"
+
+# ── updates ─────────────────────────────────────────────────────────────────
+[uses.pacman-contrib]
+bin = "checkupdates"
+where = "glyph/system/package-updates.sh, official-repo branch"
+breaks = "falls back to a fakeroot pacman -Sy, slower, still works"
+
+# ── geo ─────────────────────────────────────────────────────────────────────
+[uses.geoclue]
+bin = "/usr/lib/geoclue-2.0/demos/agent"
+where = "execs.lua starts the agent; services/Weather.qml reads its location"
+breaks = "weather falls back to ipinfo.io"
+
+# ── aur theming ─────────────────────────────────────────────────────────────
+[uses.qtengine]
+bin = "qtengine"
+where = "Qt platform theme; reads ~/.config/qtengine.colors (generated by Apply.apps())"
+breaks = "Qt apps ignore the palette"
+
+[uses.darkly-bin]
+bin = "Darkly"
+where = "the Qt style qtengine drives"
+breaks = "Qt apps fall back to Fusion"
+
+# ── aur cursor ──────────────────────────────────────────────────────────────
+[uses.bibata-cursor-theme-bin]
+bin = "Bibata"
+where = "variables.lua cursorTheme; execs.lua does hyprctl setcursor + gsettings"
+breaks = "stock cursor"
+
+# ── flatpak ─────────────────────────────────────────────────────────────────
+[uses.flatpak-apps]
+bin = "app.zen_browser.zen"
+where = "variables.lua browser = flatpak run app.zen_browser.zen"
+breaks = "the browser bind does nothing"
+note = "manifest key is the flatpak app id, not a package"
+
+# ── greeter ─────────────────────────────────────────────────────────────────
+[uses.sddm]
+bin = "sddm"
+where = "install.sh --sddm copies config/sddm/glyph and writes zz-glyph.conf"
+breaks = "no graphical login; this machine boots Hyprland directly"
+
+# ── thinkpad ────────────────────────────────────────────────────────────────
+[uses.thinkfan]
+bin = "thinkfan"
+where = "owns /proc/acpi/ibm/fan; /usr/local/bin/reddot-thinkpad rewrites /etc/thinkfan.yaml and restarts the service"
+breaks = "fan curve page cannot apply; LEDs still work"
+note = "AUR: not in the official repos"

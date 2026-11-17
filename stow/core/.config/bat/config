@@ -1,0 +1,10 @@
+# dev: bat. The theme is `ansi`, never a hex palette, so bat paints with the
+# terminal's own 16 colours and follows whatever Ghostty is showing.
+--theme=ansi
+--style=plain
+--paging=never
+--map-syntax=*.conf:INI
+--map-syntax=*.fish:Fish
+--map-syntax=*.lua:Lua
+--map-syntax=PKGBUILD:bash
+--map-syntax=.env:bash
