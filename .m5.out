@@ -1,0 +1,68 @@
+
+  d o t f i l e s
+  Arch, reddoted, Hyprland  ·  log off
+
+  ── tools
+  [ok] already here: python git curl sudo
+[2K  what should this machine have?  74 selected
+[2K
+[2K  ── presets
+[2K  > [x] desktop   reddoted e o que ele precisa                
+[2K    [~] terminal  o hub sozinho, sem Hyprland                 
+[2K  ── base 6/6
+[2K    [x] base-devel install.sh builds yay-bin from the AUR; also c… 
+[2K    [x] git       install.sh (clone reddoted), fisher, ya pkg, i… 
+[2K
+[2K  ↑↓ move · enter toggle · i install · a all · n none · q quit
+[10A[2K  what should this machine have?  0 selected
+[2K
+[2K  ── presets
+[2K  > [ ] desktop   reddoted e o que ele precisa                
+[2K    [ ] terminal  o hub sozinho, sem Hyprland                 
+[2K  ── base 0/6
+[2K    [ ] base-devel install.sh builds yay-bin from the AUR; also c… 
+[2K    [ ] git       install.sh (clone reddoted), fisher, ya pkg, i… 
+[2K
+[2K  ↑↓ move · enter toggle · i install · a all · n none · q quit
+[10A[J
+
+  ╭─ plan ───────────────────────────────────────────────────────────╮
+  │ packages  : 3 required, 0 aur                                      │
+  │ groups    :                                                        │
+  │ units     : core                                                   │
+  │ reddoted  : skip                                                   │
+  │ links     : stow                                                   │
+  │ wiring    : skip                                                   │
+  ╰───────────────────────────────────────────────────────────────────╯
+  [info] dry run, nothing will change
+
+  1/6 packages █░░░░░░░░░
+  [ok] all 3 required packages present
+
+  2/6 aur ███░░░░░░░
+
+  [fail] grep -v '^$'
+         exit 1, line 178
+         log: disabled (state dir not writable)
+
+  [ok] nothing selected
+
+  3/6 services █████░░░░░
+
+  4/6 groups ██████░░░░
+
+  5/6 stow ████████░░
+    $ stow --no-folding -d /home/renks/Projects/dotfiles/stow -t ~ core
+
+  6/6 verify ██████████░
+    $ python3 deps/check.py
+
+
+  ╭─ done ───────────────────────────────────────────────────────────╮
+  │ time      : 0m04s                                                  │
+  │ check     : python3 deps/check.py                                  │
+  │ update    : ./install.sh --update, then --links                    │
+  │ undo      : ~/.dots-backup-2026-11-16_21-57-15                     │
+  │ log       : off                                                    │
+  ╰───────────────────────────────────────────────────────────────────╯
+

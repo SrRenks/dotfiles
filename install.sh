@@ -34,90 +34,15 @@ trap 'printf "%s" "${UI_SHOW:-}"' EXIT INT TERM
 . "$DOTS/lib/steps.sh"
 
 # ── menu definition ─────────────────────────────────────────────────────────
-# id|label|description, the ids are deps.toml group ids, except the last three,
-# which are actions rather than packages.
-# The two presets are computed from units.toml, never hand-listed: toggling one
-# checks exactly the rows it would install, and the count in the description is
-# the same query the installer uses.
-PRESET_DESKTOP="reddoted,personal,$(python3 "${DOTS}/deps/query.py" unit-groups --units reddoted | paste -sd, -)"
-PRESET_DESKTOP_N=$( { python3 "${DOTS}/deps/query.py" pacman --groups "$(python3 "${DOTS}/deps/query.py" unit-groups --units reddoted | paste -sd, -)"
-                       python3 "${DOTS}/deps/query.py" unit-packages --units core
-                       python3 "${DOTS}/deps/query.py" gaps; } | awk '!seen[$0]++' | grep -c . || true)
-PRESET_HUB="$(python3 "${DOTS}/deps/query.py" unit-ids | grep -vxE 'reddoted|personal' | paste -sd, -)"
-PRESET_HUB_N=$(python3 "${DOTS}/deps/query.py" unit-packages --units "$(python3 "${DOTS}/deps/query.py" unit-ids | grep -vxE 'reddoted|personal' | paste -sd, -)" | grep -c . || true)
+# The rows come from the manifests, one per package, so the checklist cannot
+# drift from what will actually be installed. Format: type|id|label|desc|sets.
+mapfile -t MENU_ROWS < <(python3 "${DOTS}/deps/query.py" checklist)
 
-MENU_ROWS=(
-    "head||─ presets|"
-    "preset|preset:desktop|desktop|reddoted and everything it needs, ${PRESET_DESKTOP_N} packages|${PRESET_DESKTOP}"
-    "preset|preset:terminal|terminal|the hub alone, no Hyprland, ${PRESET_HUB_N} packages|${PRESET_HUB}"
-    "head||─ system|"
-    "item|base|base|build tools, stow, python, AUR helper"
-    "item|graphics|graphics|mesa + vulkan, drivers for the GPU found"
-    "item|session|desktop|hyprland, quickshell, portals, keyring"
-    "item|audio|audio|pipewire, wireplumber"
-    "item|network|network|networkmanager, bluetooth"
-    "item|power|power|tlp (power-profiles-daemon excluded on purpose)"
-    "head||─ surface|"
-    "item|shell-core|tools|screenshots, clipboard, brightness, media"
-    "item|shell-extras|tools+|swappy, recorder, qalc, trash, libvips"
-    "item|fonts|fonts|jetbrains mono nerd, space mono, cjk, emoji"
-    "item|icons|theming|papirus, adw-gtk3"
-    "item|audio-tools|audio-app|pavucontrol, easyeffects"
-    "item|apps|apps|dolphin, vscodium"
-    "head||─ terminal|"
-    # these are stow units, not package groups: picking one stows its config
-    "item|core|core|git, bat, ripgrep: always stowed with anything else"
-    "item|fish|fish|fish, starship, eza, zoxide, direnv, fzf"
-    "item|tmux|tmux|tmux with popups, and login start with SSH separation"
-    "item|ghostty|ghostty|the terminal profile"
-    "item|starship|starship|the prompt"
-    "item|yazi|yazi|file manager: openers, plugins, theme"
-    "item|fastfetch|fastfetch|logo off, ANSI keys"
-    "head||─ desktop|"
-    "item|reddoted|reddoted|the whole rice: clone, pin, stow, greeter"
-    "item|personal|personal|~/.config/hypr/user.lua, your monitors"
-    "head||─ optional|"
-    "item|tty|mouse|mouse on the virtual console, via gpm"
-    "item|input|input|ydotool + input group (paste into field)"
-    "item|yazi-extras|yazi+|udisks2, exiftool (mount, EXIF)"
-    "item|greeter|sddm|login greeter + glyph theme"
-    "item|flatpak-apps|flatpak|zen browser, via flathub"
-    "item|geo|geoclue|weather location"
-    "item|updates|checkupdates|faster update widget"
-    "item|aur-theming|qt-theme|qtengine + darkly (AUR, Qt follows palette)"
-    "item|thinkpad|thinkfan|fan curve + LEDs (ThinkPad; thinkfan is AUR)"
-    "item|aur-cursor|cursor|bibata cursor (AUR)"
-)
+# The default is the desktop preset: its sets are the ids it would check.
+DEFAULT_PICKS="$(python3 "${DOTS}/deps/query.py" checklist |
+    awk -F'|' '$2 == "preset:desktop" { print $5 }')"
+IFS=',' read -r -a MENU_ON <<<"${DEFAULT_PICKS}"
 
-MENU_ON=(${PRESET_DESKTOP//,/ })
-
-usage() {
-    cat <<EOF
-
-  dotfiles $VERSION, Arch, stow, reddoted
-
-  ${UI_BOLD}modes${UI_OFF}
-    ./install.sh                     interactive: pick components, see the plan, run it
-    ./install.sh --stow fish,tmux    only those units (no reddoted, no Hyprland)
-    ./install.sh --stow reddoted     the whole desktop, as one unit
-    ./install.sh --profile NAME      terminal | standard | full
-    ./install.sh --only a,b,c        explicit group list, no menu
-    ./install.sh --check             audit only, changes nothing
-    ./install.sh --update            move ~/Projects/reddoted to the pinned revision
-
-  ${UI_BOLD}options${UI_OFF}
-    --all         include the optional groups (greeter, flatpak, geoclue, thinkfan…)
-    --optional    same, for the interactive path
-    --dry-run     print every command instead of running it
-    --yes         accept the defaults, no menu, no questions
-    --no-tui      plain output, for logs and CI
-    -h, --help    this
-    -V, --version print the version
-
-  ${UI_BOLD}units${UI_OFF}
-    $(python3 "$DOTS/deps/query.py" unit-ids 2>/dev/null | sed 's/^/    /' | paste -sd' ' -)
-EOF
-}
 
 # ── args ────────────────────────────────────────────────────────────────────
 MODE="install"
@@ -130,9 +55,11 @@ PRE_PICKED=0
 # Profiles are the answer to "I don't use all of this": the minimum that still
 # gives a working desktop, the full rice, or everything including the optional
 # integrations.
+# A profile is a preset id now: the same sets the checklist rows carry, so a
+# profile cannot disagree with what the menu would check.
 declare -A PROFILES=(
-    [terminal]="${PRESET_HUB}"
-    [standard]="${PRESET_DESKTOP}"
+    [terminal]="preset:terminal"
+    [standard]="preset:desktop"
     [full]="__all__"
 )
 while [ $# -gt 0 ]; do
@@ -171,11 +98,11 @@ plan_panel() { # $1 = comma list of group ids, $2 = 1 if gaps are included
 
     # groups and units both contribute packages; the count has to match what
     # step_packages will actually install
-    n_pacman=$( { [ -n "$groups" ] && python3 "${DOTS}/deps/query.py" pacman --groups "$groups"
+    n_pacman=$( { printf '%s\n' ${PACMAN_CS:-}
+                  printf '%s\n' ${AUR_CS:-}
                   [ -n "${SELECTED_UNITS_CS:-}" ] && python3 "${DOTS}/deps/query.py" unit-packages --units "${SELECTED_UNITS_CS}"
-                  [ "$gaps" = 1 ] && python3 "${DOTS}/deps/query.py" gaps
                 } | awk '!seen[$0]++' | grep -c . || true)
-    n_aur=$(python3 "${DOTS}/deps/query.py" aur --groups "$groups" | grep -c . || true)
+    n_aur=$(printf '%s\n' ${AUR_CS:-} | grep -c . || true)
     n_units=${#SELECTED_UNITS[@]}
     n_red=${WANT_REDDOTED:-0}
     n_links=${WANT_LINKS:-0}
@@ -261,27 +188,42 @@ ui_phase_done
 require_network
 
 # ── selection ───────────────────────────────────────────────────────────────
+# expand any preset id into the ids it stands for, so --profile, --only and the
+# menu all mean the same thing
+expand_presets() {
+    local -a out=()
+    local id row sets
+    for id in "$@"; do
+        [ -n "$id" ] || continue
+        case "$id" in
+            preset:*)
+                sets="$(printf '%s\n' "${MENU_ROWS[@]}" | awk -F'|' -v k="$id" '$2 == k { print $5 }')"
+                IFS=',' read -r -a _p <<<"$sets"
+                out+=("${_p[@]}")
+                ;;
+            *) out+=("$id") ;;
+        esac
+    done
+    printf '%s\n' "${out[@]}"
+}
+
 if [ -n "$ONLY" ]; then
     if [ "$ONLY" = "__all__" ]; then
         MENU_PICKED=()
-        for row in "${MENU_ROWS[@]}"; do
-            IFS='|' read -r type id label desc <<<"$row"
-            [ "$type" = item ] && MENU_PICKED+=("$id")
-        done
+        IFS=',' read -r -a _all <<<"$(python3 "${DOTS}/deps/query.py" classify | cut -d'|' -f1 | paste -sd, -)"
+        MENU_PICKED=("${_all[@]}")
     else
         IFS=',' read -r -a MENU_PICKED <<<"$ONLY"
+        mapfile -t MENU_PICKED < <(expand_presets "${MENU_PICKED[@]}")
     fi
 elif [ "$PRE_PICKED" -eq 1 ]; then
     :   # MENU_PICKED was built from the `reddoted` unit
 elif [ -n "$PROFILE" ]; then
     if [ "${PROFILES[$PROFILE]}" = "__all__" ]; then
-        MENU_PICKED=()
-        for row in "${MENU_ROWS[@]}"; do
-            IFS='|' read -r type id label desc <<<"$row"
-            [ "$type" = item ] && MENU_PICKED+=("$id")
-        done
+        IFS=',' read -r -a MENU_PICKED <<<"$(python3 "${DOTS}/deps/query.py" classify | cut -d'|' -f1 | paste -sd, -)"
     else
         IFS=',' read -r -a MENU_PICKED <<<"${PROFILES[$PROFILE]}"
+        mapfile -t MENU_PICKED < <(expand_presets "${MENU_PICKED[@]}")
     fi
 elif [ "$ASSUME_YES" -eq 1 ] || [ "$NO_TUI" -eq 1 ]; then
     MENU_PICKED=("${MENU_ON[@]}")
@@ -298,28 +240,48 @@ fi
 # kinds, and let the actions the old menu had (links, wiring) be consequences:
 # selecting anything that has files stows it, selecting anything that calls
 # fisher or ya wires it.
-GROUPS_ALL="$(python3 "${DOTS}/deps/query.py" ids)"
-UNITS_ALL="$(python3 "${DOTS}/deps/query.py" unit-ids)"
+# classify: id|pkg|group  or  id|unit|unit. One lookup, then the pick splits into
+# an explicit package list, a group list for services, and the stow units.
+declare -A KIND=() GROUP_OF=()
+while IFS='|' read -r cid ckind cgroup; do
+    [ -n "$cid" ] || continue
+    KIND["$cid"]="$ckind"
+    GROUP_OF["$cid"]="$cgroup"
+done < <(python3 "${DOTS}/deps/query.py" classify)
 
-in_list() { printf '%s\n' "$1" | grep -qx -- "$2"; }
+AUR_ALL="$(python3 "${DOTS}/deps/query.py" aur | tr '\n' ' ')"
+declare -A GROUP_PKGS=()
+while IFS='|' read -r g_gid g_pkg _; do
+    [ -n "$g_gid" ] || continue
+    GROUP_PKGS["$g_gid"]="${GROUP_PKGS[$g_gid]:+${GROUP_PKGS[$g_gid]},}$g_pkg"
+done < <(python3 "${DOTS}/deps/query.py" packages)
 
-SELECTED_GROUPS=""
+SELECTED_PKGS=()
 SELECTED_UNITS=()
+SELECTED_GROUPS=""
 WANT_REDDOTED=0
+add_group() { case ",${SELECTED_GROUPS}," in *",$1,"*) ;; *) SELECTED_GROUPS="${SELECTED_GROUPS:+$SELECTED_GROUPS,}$1" ;; esac; }
 for id in "${MENU_PICKED[@]}"; do
     [ -n "$id" ] || continue
-    case "$id" in
-        preset:*) continue ;;              # a preset is a shortcut, not a component
-        reddoted) WANT_REDDOTED=1; continue ;;
-        links|wiring) continue ;;          # kept for old command lines
+    case "${KIND[$id]:-}" in
+        unit)
+            local_unit="${GROUP_OF[$id]}"
+            [ "$local_unit" = reddoted ] && { WANT_REDDOTED=1; continue; }
+            SELECTED_UNITS+=("$local_unit")
+            ;;
+        pkg) SELECTED_PKGS+=("$id"); add_group "${GROUP_OF[$id]}" ;;
+        group)
+            # a bare group id on the command line means "all of its packages"
+            IFS=',' read -r -a _gp <<<"${GROUP_PKGS[$id]:-}"
+            for _p in "${_gp[@]}"; do
+                [ -n "$_p" ] || continue
+                case " ${SELECTED_PKGS[*]-} " in *" $_p "*) continue ;; esac
+                SELECTED_PKGS+=("$_p")
+                add_group "${GROUP_OF[$_p]:-$id}"
+            done
+            ;;
+        *)   ui_warn "unknown component: $id" ;;
     esac
-    if in_list "${UNITS_ALL}" "$id"; then
-        SELECTED_UNITS+=("$id")
-    elif in_list "${GROUPS_ALL}" "$id"; then
-        SELECTED_GROUPS="${SELECTED_GROUPS:+$SELECTED_GROUPS,}$id"
-    else
-        ui_warn "unknown component: $id"
-    fi
 done
 
 # reddoted carries its own package groups; asking for it is enough
@@ -340,6 +302,15 @@ while read -r a; do
 done < <(python3 "${DOTS}/deps/query.py" unit-always)
 
 SELECTED_UNITS_CS="$(IFS=,; echo "${SELECTED_UNITS[*]}")"
+PACMAN_LIST=(); AUR_LIST=()
+for _p in "${SELECTED_PKGS[@]}"; do
+    case " ${AUR_ALL} " in
+        *" $_p "*) AUR_LIST+=("$_p") ;;
+        *)         PACMAN_LIST+=("$_p") ;;
+    esac
+done
+PACMAN_CS="$(printf '%s ' "${PACMAN_LIST[@]}")"
+AUR_CS="$(printf '%s ' "${AUR_LIST[@]}")"
 
 WANT_LINKS=0
 if [ ${#SELECTED_UNITS[@]} -gt 0 ] || [ "$WANT_REDDOTED" -eq 1 ]; then WANT_LINKS=1; fi
@@ -372,8 +343,8 @@ fi
 # ── run ─────────────────────────────────────────────────────────────────────
 # (Tools already ran as phase 0, before anything read the manifest.)
 if [ "$MODE" != "links" ]; then
-    step_packages "$SELECTED_GROUPS" "$SELECTED_UNITS_CS" "$GAPS"; ui_phase_done
-    step_aur "$SELECTED_GROUPS";              ui_phase_done
+    step_packages "${PACMAN_CS}" "$SELECTED_UNITS_CS"; ui_phase_done
+    step_aur "${AUR_CS}"; ui_phase_done
     step_services "$SELECTED_GROUPS";         ui_phase_done
     step_groups "$SELECTED_GROUPS";           ui_phase_done
 fi

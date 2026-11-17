@@ -1,0 +1,64 @@
+
+  d o t f i l e s
+  Arch, reddoted, Hyprland  ·  log off
+
+  ── tools
+  [ok] already here: python git curl sudo
+[2K  what should this machine have?  74 selected
+[2K
+[2K  ── presets
+[2K  > [x] desktop   reddoted e o que ele precisa                
+[2K    [ ] terminal  o hub sozinho, sem Hyprland                 
+[2K  ── base 6/6
+[2K    [x] base-devel install.sh builds yay-bin from the AUR; also c… 
+[2K    [x] git       install.sh (clone reddoted), fisher, ya pkg, i… 
+[2K
+[2K  ↑↓ move · enter toggle · i install · a all · n none · q quit
+[10A[J
+  [warn] unknown component: reddoted
+
+  ╭─ plan ───────────────────────────────────────────────────────────╮
+  │ packages  : 73 required, 2 aur                                     │
+  │ groups    : base graphics session audio network thinkpad shell-c   │
+  │ units     : core                                                   │
+  │ reddoted  : skip                                                   │
+  │ links     : stow                                                   │
+  │ wiring    : skip                                                   │
+  ╰───────────────────────────────────────────────────────────────────╯
+  [info] dry run, nothing will change
+
+  1/6 packages █░░░░░░░░░
+  [info] 4 of 71 missing
+    swappy libqalculate trash-cli ydotool
+    $ sudo pacman -S --needed swappy libqalculate trash-cli ydotool
+
+  2/6 aur ███░░░░░░░
+    $ yay -S --needed qtengine darkly-bin
+
+  3/6 services █████░░░░░
+  [ok] NetworkManager already enabled
+  [ok] bluetooth already enabled
+  [info] pipewire-pulse.socket, no user bus here
+  [info] wireplumber, no user bus here
+  [info] skip ydotool (not installed)
+
+  4/6 groups ██████░░░░
+  [ok] renks already in input
+  [info] adding to video (log out to take effect)
+    $ asroot usermod -aG video renks
+
+  5/6 stow ████████░░
+    $ stow --no-folding -d /home/renks/Projects/dotfiles/stow -t ~ core
+
+  6/6 verify ██████████░
+    $ python3 deps/check.py
+
+
+  ╭─ done ───────────────────────────────────────────────────────────╮
+  │ time      : 0m04s                                                  │
+  │ check     : python3 deps/check.py                                  │
+  │ update    : ./install.sh --update, then --links                    │
+  │ undo      : ~/.dots-backup-2026-11-16_21-58-20                     │
+  │ log       : off                                                    │
+  ╰───────────────────────────────────────────────────────────────────╯
+

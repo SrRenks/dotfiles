@@ -115,6 +115,100 @@ def main() -> int:
         case "unit-ids":
             for uid in load("units.toml").get("unit", {}):
                 print(uid)
+        case "checklist":
+            # The whole selection UI, one row per line, in the manifest's order:
+            # type|id|label|desc|sets. Bash only has to draw it.
+            deps = load("deps.toml")
+            units = load("units.toml").get("unit", {})
+            uses = load("usage.toml").get("uses", {})
+            groups = deps.get("group", [])
+            by_id = {g.get("id"): g for g in groups}
+            def pkg_ids(g):
+                return ",".join(g.get("pacman", []) + g.get("aur", []))
+            def short(pid):
+                u = uses.get(pid, {})
+                w = u.get("where", "")
+                return (w[:46] + "…") if len(w) > 47 else w
+            # presets are built from the units, not from "every group there is":
+            # an optional group is not part of the default desktop
+            def unit_pkgs(uid, seen=None):
+                u = units.get(uid, {})
+                out = []
+                for gid in u.get("groups", []):
+                    out += by_id.get(gid, {}).get("pacman", [])
+                    out += by_id.get(gid, {}).get("aur", [])
+                return out
+            def dedupe(seq):
+                seen = set()
+                out = []
+                for x in seq:
+                    if x and x not in seen:
+                        seen.add(x)
+                        out.append(x)
+                return out
+            # a package whose name is also a unit name (fish, tmux, yazi...) would
+            # be read as that unit; reddoted owns those configs, so keep them out
+            # of the desktop preset and let the unit rows stand on their own
+            desktop = dedupe(["unit:reddoted", "unit:core"] + unit_pkgs("reddoted") + unit_pkgs("core"))
+            hub = dedupe(["unit:" + u for u in units if u not in ("reddoted", "personal")])
+            print("head||presets|")
+            print(f"preset|preset:desktop|desktop|reddoted e o que ele precisa|{','.join(desktop)}")
+            print(f"preset|preset:terminal|terminal|o hub sozinho, sem Hyprland|{','.join(hub)}")
+            for g in groups:
+                gid = g.get("id")
+                pkgs = g.get("pacman", []) + g.get("aur", [])
+                if not pkgs:
+                    continue
+                label = gid + (" (AUR)" if g.get("aur") else "")
+                print(f"head|grp:{gid}|{label}||{pkg_ids(g)}")
+                for pid in pkgs:
+                    print(f"pkg|{pid}|{pid}|{short(pid)}|")
+            print("head||configs|")
+            for uid, unit in units.items():
+                if uid == "reddoted":
+                    continue
+                desc = unit.get("desc", "")
+                desc = desc[:46] + "…" if len(desc) > 47 else desc
+                print(f"unit|unit:{uid}|{uid}|{desc}|")
+            gaps = deps.get("gaps", [])
+            if gaps:
+                print("head|grp:gaps|o que o reddoted esquece||" + ",".join(gaps))
+                for pid in gaps:
+                    print(f"pkg|{pid}|{pid}|{short(pid)}|")
+            print("action||iniciar||")
+        case "classify":
+            # id|kind, so the installer knows whether an id is a package, a stow
+            # unit, or the reddoted action
+            deps = load("deps.toml")
+            for g in deps.get("group", []):
+                for pid in g.get("pacman", []) + g.get("aur", []):
+                    print(f"{pid}|pkg|{g.get('id')}")
+            for pid in deps.get("gaps", []):
+                print(f"{pid}|pkg|gaps")
+            for g in deps.get("group", []):
+                if g.get("pacman") or g.get("aur"):
+                    print(f"{g.get('id')}|group|{g.get('id')}")
+            for uid in load("units.toml").get("unit", {}):
+                print(f"unit:{uid}|unit|{uid}")
+        case "packages":
+            # group|package|kind, in manifest order: the checklist reads this
+            for group in load("deps.toml").get("group", []):
+                gid = group.get("id")
+                for pkg in group.get("pacman", []):
+                    print(f"{gid}|{pkg}|pacman")
+                for pkg in group.get("aur", []):
+                    print(f"{gid}|{pkg}|aur")
+                for pkg in group.get("flatpak", []):
+                    print(f"{gid}|{pkg}|flatpak")
+        case "group-services":
+            # group|unit|scope, so services are enabled for the groups that kept
+            # at least one package
+            for group in load("deps.toml").get("group", []):
+                gid = group.get("id")
+                for unit in group.get("services_system", []):
+                    print(f"{gid}|{unit}|system")
+                for unit in group.get("services_user", []):
+                    print(f"{gid}|{unit}|user")
         case "unit-always":
             for uid, unit in load("units.toml").get("unit", {}).items():
                 if unit.get("always"):

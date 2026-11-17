@@ -135,10 +135,10 @@ require_network() {
 }
 
 # ── packages ────────────────────────────────────────────────────────────────
-step_packages() { # $1 = group ids, $2 = unit ids, $3 = 1 to include the gaps
+step_packages() { # $1 = explicit pacman list, $2 = units whose packages are needed
     ui_step "packages"
     local -a wanted=() missing=()
-    local groups="$1" units="$2" include_gaps="$3"
+    local pkgs="$1" units="$2"
 
     # `if`, not `cond && cmd`: a false condition returns 1, and under `set -eE`
     # that status escapes the pipeline and trips the error trap on a run where
@@ -146,9 +146,8 @@ step_packages() { # $1 = group ids, $2 = unit ids, $3 = 1 to include the gaps
     # never become an empty package name handed to pacman.
     mapfile -t wanted < <(
         {
-            if [ -n "$groups" ]; then python3 "$DOTS/deps/query.py" pacman --groups "$groups"; fi
+            if [ -n "$pkgs" ]; then printf '%s\n' ${pkgs}; fi
             if [ -n "$units" ]; then python3 "$DOTS/deps/query.py" unit-packages --units "$units"; fi
-            if [ "$include_gaps" = 1 ]; then python3 "$DOTS/deps/query.py" gaps; fi
         } | awk '!seen[$0]++' | grep -v '^$'
     )
 
@@ -176,7 +175,7 @@ step_packages() { # $1 = group ids, $2 = unit ids, $3 = 1 to include the gaps
 step_aur() {
     ui_step "aur"
     local -a wanted=() missing=()
-    mapfile -t wanted < <(python3 "$DOTS/deps/query.py" aur --groups "$1")
+    mapfile -t wanted < <(printf '%s\n' ${1} | awk '!seen[$0]++' | grep -v '^$')
     if [ ${#wanted[@]} -eq 0 ]; then ui_ok "nothing selected"; return 0; fi
 
     local p

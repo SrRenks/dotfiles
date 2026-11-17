@@ -302,6 +302,8 @@ ui_read_key() { # sets UI_KEY; returns 1 at EOF. Recognises arrows, space, enter
         g)      UI_KEY=home ;;
         G)      UI_KEY=end ;;
         a)      UI_KEY=all ;;
+        n)      UI_KEY=none ;;
+        i)      UI_KEY=start ;;
         q)      UI_KEY=quit ;;
         *)      UI_KEY=other ;;
     esac
@@ -318,6 +320,7 @@ ui_read_key() { # sets UI_KEY; returns 1 at EOF. Recognises arrows, space, enter
 # N lines and clear" escape. No arithmetic about how many lines a frame uses.
 ui_menu() {
     local title="$1"
+    MENU_ACTION=0
     local -a picked=() buf=()
     local cursor=0 total=${#MENU_ROWS[@]} visible=${MENU_VISIBLE:-18}
     local top=0 last=0 i row type id label desc sets check r count=0
@@ -333,6 +336,7 @@ ui_menu() {
         [ "$cursor" -lt "$top" ] && top=$cursor
         [ "$cursor" -ge $((top + visible)) ] && top=$((cursor - visible + 1))
         [ "$top" -lt 0 ] && top=0
+        local lastrow=$((total - 1))
 
         # the count is recomputed per frame: it is the feedback that space did
         # something, even when the toggled row is scrolled out of view
@@ -345,7 +349,21 @@ ui_menu() {
         for ((i = top; i < top + visible && i < total; i++)); do
             IFS='|' read -r type id label desc sets <<<"${MENU_ROWS[$i]}"
             if [ "$type" = head ]; then
-                buf+=("  ${UI_DIM}${label}${UI_OFF}")
+                if [ -n "${sets}" ]; then
+                    local total=0 have=0 m
+                    for m in ${sets//,/ }; do
+                        total=$((total + 1))
+                        printf '%s\n' "${picked[@]}" | grep -qxF -- "$m" && have=$((have + 1))
+                    done
+                    local mark=' '
+                    [ "$have" -eq "$total" ] && mark='x'
+                    if [ "$have" -gt 0 ] && [ "$have" -lt "$total" ]; then mark='~'; fi
+                    local counted
+                    counted="$(printf '%s/%s' "$have" "$total")"
+                    buf+=("  ${UI_DIM}──${UI_OFF} ${UI_BOLD}${label}${UI_OFF} ${UI_DIM}${counted}${UI_OFF}")
+                else
+                    buf+=("  ${UI_DIM}── ${label}${UI_OFF}")
+                fi
                 continue
             fi
 
@@ -354,7 +372,9 @@ ui_menu() {
             # states, so you can see exactly what a preset brings and what you
             # have taken out of it afterwards.
             check=' '
-            if [ -n "${sets}" ]; then
+            if [ "$type" = action ]; then
+                check=' '
+            elif [ -n "${sets}" ]; then
                 local total=0 have=0 m
                 for m in ${sets//,/ }; do
                     total=$((total + 1))
@@ -363,7 +383,7 @@ ui_menu() {
                 if [ "${have}" -eq "${total}" ]; then check='x'
                 elif [ "${have}" -gt 0 ]; then check='~'
                 fi
-            else
+            elif [ ${#picked[@]} -gt 0 ] && [ -n "$id" ]; then
                 printf '%s\n' "${picked[@]}" | grep -qxF -- "$id" && check='x'
             fi
 
@@ -390,7 +410,7 @@ ui_menu() {
         done
 
         buf+=("")
-        buf+=("  ${UI_DIM}j/k move · space toggle · a all · enter run · q quit${UI_OFF}")
+        buf+=("  ${UI_DIM}↑↓ move · enter toggle · i install · a all · n none · q quit${UI_OFF}")
 
         [ "$last" -gt 0 ] && printf '\033[%dA' "$last"
         for row in "${buf[@]}"; do printf '\033[2K%s\n' "$row"; done
@@ -401,14 +421,14 @@ ui_menu() {
         case "$UI_KEY" in
             home)
                 cursor=0
-                while [ "$cursor" -lt "$last" ]; do
+                while [ "$cursor" -lt "$lastrow" ]; do
                     IFS='|' read -r type _ _ _ _ <<<"${MENU_ROWS[$cursor]}"
                     [ "$type" = head ] || break
                     cursor=$((cursor + 1))
                 done
                 ;;
             end)
-                cursor=$last
+                cursor=$lastrow
                 while [ "$cursor" -gt 0 ]; do
                     IFS='|' read -r type _ _ _ _ <<<"${MENU_ROWS[$cursor]}"
                     [ "$type" = head ] || break
@@ -416,7 +436,7 @@ ui_menu() {
                 done
                 ;;
             pgup)   cursor=$((cursor > 8 ? cursor - 8 : 0)) ;;
-            pgdn)   cursor=$((cursor + 8 < last ? cursor + 8 : last)) ;;
+            pgdn)   cursor=$((cursor + 8 < lastrow ? cursor + 8 : lastrow)) ;;
             up)
                 cursor=$((cursor - 1))
                 [ "$cursor" -lt 0 ] && cursor=0
@@ -429,9 +449,15 @@ ui_menu() {
                 while [ "$cursor" -lt "$total" ] && [ "${MENU_ROWS[$cursor]%%|*}" = head ]; do cursor=$((cursor + 1)); done
                 [ "$cursor" -ge "$total" ] && cursor=$((total - 1))
                 ;;
-            space)
+            space|enter)
                 IFS='|' read -r type id label desc sets <<<"${MENU_ROWS[$cursor]}"
-                [ "$type" = head ] && continue
+                # Enter on the action row starts the run; everywhere else Enter
+                # and space both toggle, which is what a checklist should do
+                if [ "$UI_KEY" = enter ] && [ "$type" = action ]; then
+                    MENU_ACTION=1
+                    break
+                fi
+                [ "$type" = head ] && [ -z "${sets}" ] && continue
                 if [ -n "${sets}" ]; then
                     local m have=0 total=0
                     for m in ${sets//,/ }; do
@@ -462,15 +488,19 @@ ui_menu() {
                     picked+=("$id")
                 fi
                 ;;
+            start)
+                MENU_ACTION=1
+                break
+                ;;
+            none)
+                picked=()
+                ;;
             all)
                 picked=()
                 for row in "${MENU_ROWS[@]}"; do
                     IFS='|' read -r type id label desc <<<"$row"
                     [ "$type" = item ] && picked+=("$id")
                 done
-                ;;
-            enter)
-                break
                 ;;
             quit)
                 printf '\033[%dA\033[J%s' "$last" "$UI_SHOW"

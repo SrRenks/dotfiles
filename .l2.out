@@ -1,0 +1,41 @@
+[38;2;215;25;33m●[0m bash syntax
+  ok install.sh
+  ok lib/detect.sh
+  ok lib/steps.sh
+  ok lib/ui.sh
+  ok deps/lint.sh
+[38;2;215;25;33m●[0m shellcheck
+  (shellcheck not installed: pacman -S shellcheck, or drop the static binary in $PATH)
+[38;2;215;25;33m●[0m manifests
+  ok toml + python parse
+[38;2;215;25;33m●[0m usage evidence
+  ok every package documented
+[38;2;215;25;33m●[0m ghostty config
+  ok ghostty accepted every option
+[38;2;215;25;33m●[0m starship config
+  ok starship rendered with no warning
+[38;2;215;25;33m●[0m fish config
+  ok every file parses and an interactive shell starts clean
+[38;2;215;25;33m●[0m tmux config loads clean
+  ok no option, value or binding was rejected
+[38;2;215;25;33m●[0m panel balance
+  ok install.sh: 3 opened, 3 closed
+  ok lib/detect.sh: 2 opened, 2 closed
+  ok lib/steps.sh: 0 opened, 0 closed
+  ok lib/ui.sh: 0 opened, 2 closed
+[38;2;215;25;33m●[0m dry run of every mode
+  ok --profile terminal
+  ok --profile standard
+  ok --profile full
+  ok --stow ghostty
+  ok --stow fish
+  ok --stow yazi
+  ok --stow reddoted
+  ok --only base,core,fish
+  ok --only reddoted,core
+  ok --links
+  ok --deps
+  ok --version
+  ok --help
+
+[38;2;215;25;33m●[0m all checks passed

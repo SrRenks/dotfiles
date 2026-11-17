@@ -197,6 +197,25 @@ Nothing palette on its own. See [docs/THEMING.md](docs/THEMING.md).
 | [`stow/`](stow/) | hub-owned packages |
 | [`docs/`](docs/) | dependencies, integrations, theming, side effects, per package, standalone |
 
+The menu is one checklist, and every row is a package you will actually get.
+Sections are package groups; the group header toggles the whole group and shows
+`3/6`; the two preset rows at the top check a whole selection at once and go
+half-lit `[~]` when you take a member out.
+
+```
+  ─ presets
+  [x] desktop   reddoted e o que ele precisa
+  [ ] terminal  o hub sozinho, sem Hyprland
+  ─ base 6/6
+  [x] base-devel  install.sh builds yay-bin from the AUR; also c…
+  [x] git         install.sh (clone reddoted), fisher, ya pkg, i…
+```
+
+Keys: `↑↓`/`jk` move, `enter` or `space` toggles the row under the cursor, `i`
+starts the run, `a` checks everything, `n` clears, `q` quits without touching
+anything. Unchecking a single package really does drop it: the installer builds
+its command line from what is left checked, not from the group lists.
+
 ## What it costs
 
 Measured on the ThinkPad that runs this, not estimated.

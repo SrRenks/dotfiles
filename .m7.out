@@ -1,0 +1,79 @@
+
+  d o t f i l e s
+  Arch, reddoted, Hyprland  ·  log off
+
+  ── tools
+  [ok] already here: python git curl sudo
+[2K  what should this machine have?  69 selected
+[2K
+[2K  ── presets
+[2K  > [x] desktop   reddoted e o que ele precisa                
+[2K    [~] terminal  o hub sozinho, sem Hyprland                 
+[2K  ── base 6/6
+[2K    [x] base-devel install.sh builds yay-bin from the AUR; also c… 
+[2K    [x] git       install.sh (clone reddoted), fisher, ya pkg, i… 
+[2K
+[2K  ↑↓ move · enter toggle · i install · a all · n none · q quit
+[10A[J
+
+  ╭─ plan ───────────────────────────────────────────────────────────╮
+  │ packages  : 67 required, 2 aur                                     │
+  │ groups    : base graphics session audio network thinkpad shell-c   │
+  │ units     : core                                                   │
+  │ reddoted  : clone at c9bc3f0                                       │
+  │ links     : stow                                                   │
+  │ wiring    : fisher, ya pkg, xdg-mime                               │
+  ╰───────────────────────────────────────────────────────────────────╯
+  [info] dry run, nothing will change
+
+  1/8 packages █░░░░░░░░░
+  [info] 4 of 65 missing
+    swappy libqalculate trash-cli ydotool
+    $ sudo pacman -S --needed swappy libqalculate trash-cli ydotool
+
+  2/8 aur ██░░░░░░░░
+    $ yay -S --needed qtengine darkly-bin
+
+  3/8 services ███░░░░░░░
+  [ok] NetworkManager already enabled
+  [ok] bluetooth already enabled
+  [ok] tlp already enabled
+  [info] pipewire-pulse.socket, no user bus here
+  [info] wireplumber, no user bus here
+  [info] skip ydotool (not installed)
+
+  4/8 groups █████░░░░░
+  [ok] renks already in input
+  [info] adding to video (log out to take effect)
+    $ asroot usermod -aG video renks
+
+  5/8 reddoted ██████░░░░
+  [ok] at pin c9bc3f0
+  [ok] thinkpad helper present · /usr/local/bin/reddot-thinkpad
+
+  6/8 stow ███████░░░
+    $ stow --no-folding -d /home/renks/Projects/reddoted -t ~/.config --ignore=fonts --ignore=sddm --ignore=xdg config
+    $ stow --no-folding -d /home/renks/Projects/dotfiles/stow -t ~ core
+
+  7/8 wiring ████████░░
+  [info] fisher plugins
+    $ fish -c "fisher update"
+    $ xdg-mime default yazi.desktop inode/directory
+  [info] tmux plugins (resurrect, continuum)
+  [ok] tmux-resurrect present
+  [ok] tmux-continuum present
+
+  8/8 verify ██████████░
+    $ python3 deps/check.py
+
+
+  ╭─ done ───────────────────────────────────────────────────────────╮
+  │ next      : reboot, or re-login if groups changed                  │
+  │ start     : tty1, then run Hyprland                                │
+  │ time      : 0m04s                                                  │
+  │ check     : python3 deps/check.py                                  │
+  │ update    : ./install.sh --update, then --links                    │
+  │ undo      : ~/.dots-backup-2026-11-16_21-58-07                     │
+  │ log       : off                                                    │
+  ╰───────────────────────────────────────────────────────────────────╯
+

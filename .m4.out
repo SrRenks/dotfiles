@@ -1,0 +1,58 @@
+
+  d o t f i l e s
+  Arch, reddoted, Hyprland  ·  log off
+
+  ── tools
+  [ok] already here: python git curl sudo
+[2K  what should this machine have?  74 selected
+[2K
+[2K  ── presets
+[2K  > [x] desktop   reddoted e o que ele precisa                
+[2K    [~] terminal  o hub sozinho, sem Hyprland                 
+[2K  ── base 6/6
+[2K    [x] base-devel install.sh builds yay-bin from the AUR; also c… 
+[2K    [x] git       install.sh (clone reddoted), fisher, ya pkg, i… 
+[2K
+[2K  j/k move · space toggle · a all · enter run · q quit
+[10A[2K  what should this machine have?  0 selected
+[2K
+[2K  ── presets
+[2K  > [ ] desktop   reddoted e o que ele precisa                
+[2K    [ ] terminal  o hub sozinho, sem Hyprland                 
+[2K  ── base 0/6
+[2K    [ ] base-devel install.sh builds yay-bin from the AUR; also c… 
+[2K    [ ] git       install.sh (clone reddoted), fisher, ya pkg, i… 
+[2K
+[2K  j/k move · space toggle · a all · enter run · q quit
+[10A[2K  what should this machine have?  0 selected
+[2K
+[2K  ── presets
+[2K    [ ] desktop   reddoted e o que ele precisa                
+[2K    [ ] terminal  o hub sozinho, sem Hyprland                 
+[2K  ── base 0/6
+[2K    [ ] base-devel install.sh builds yay-bin from the AUR; also c… 
+[2K  > [ ] git       install.sh (clone reddoted), fisher, ya pkg, i… 
+[2K
+[2K  j/k move · space toggle · a all · enter run · q quit
+[10A[2K  what should this machine have?  1 selected
+[2K
+[2K  ── presets
+[2K    [~] desktop   reddoted e o que ele precisa                
+[2K    [ ] terminal  o hub sozinho, sem Hyprland                 
+[2K  ── base 1/6
+[2K    [ ] base-devel install.sh builds yay-bin from the AUR; also c… 
+[2K  > [x] git       install.sh (clone reddoted), fisher, ya pkg, i… 
+[2K
+[2K  j/k move · space toggle · a all · enter run · q quit
+[10A[2K  what should this machine have?  1 selected
+[2K
+[2K  ── presets
+[2K    [~] desktop   reddoted e o que ele precisa                
+[2K    [ ] terminal  o hub sozinho, sem Hyprland                 
+[2K  ── base 1/6
+[2K    [ ] base-devel install.sh builds yay-bin from the AUR; also c… 
+[2K  > [x] git       install.sh (clone reddoted), fisher, ya pkg, i… 
+[2K
+[2K  j/k move · space toggle · a all · enter run · q quit
+
+Session terminated, killing shell... ...killed.
