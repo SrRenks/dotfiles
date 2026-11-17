@@ -21,7 +21,10 @@ command_timeout = 300
 
 # ── left: where am I ─────────────────────────────────────────────────────────
 # Path · git · toolchain · loaded environment
-format = """$directory$git_branch$git_status$git_state$python$nodejs$rust$golang$docker_context$kubernetes$direnv$character"""
+# One filled band for the directory, an arrow out of it, then plain context. The
+# popular powerline presets chain every segment unconditionally, which leaves an
+# empty coloured band whenever a segment has nothing to say; one band cannot.
+format = """[](bg:blue fg:black)$directory[](fg:blue) $git_branch$git_status$git_state$python$nodejs$rust$golang$docker_context$kubernetes$direnv$character"""
 
 # ── right: what just happened ────────────────────────────────────────────────
 # Nothing here runs unless it has something true to say.
@@ -39,16 +42,15 @@ format = "$symbol "
 
 # ── directory ────────────────────────────────────────────────────────────────
 [directory]
-style = "bright-white"
-format = "[$path]($style)[$read_only]($read_only_style) "
+style = "fg:black bg:blue"
+format = "[ $path ]($style)[$read_only]($read_only_style)"
 truncation_length = 3
 truncation_symbol = "…/"
 truncate_to_repo = true
 read_only = " ●"
-read_only_style = "red"
-# The repo root is bold, the rest is ordinary: at a glance you know if you are
-# at the top of the project or somewhere inside it.
-repo_root_style = "bold white"
+read_only_style = "fg:black bg:red"
+# No repo_root_style: it replaces the whole path span and drops the padding,
+# which leaves the band hugging its text.
 home_symbol = "~"
 
 # ── git ──────────────────────────────────────────────────────────────────────
