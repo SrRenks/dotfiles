@@ -77,6 +77,7 @@ MENU_ROWS=(
     "item|reddoted|reddoted|the whole rice: clone, pin, stow, greeter"
     "item|personal|personal|~/.config/hypr/user.lua, your monitors"
     "head||─ optional|"
+    "item|tty|mouse|mouse on the virtual console, via gpm"
     "item|input|input|ydotool + input group (paste into field)"
     "item|yazi-extras|yazi+|udisks2, exiftool (mount, EXIF)"
     "item|greeter|sddm|login greeter + glyph theme"

@@ -36,6 +36,11 @@ bin = "python3"
 where = "deps/query.py and deps/check.py (this repo), Prefs calculators"
 breaks = "the installer cannot read its own manifest"
 
+[uses.gpm]
+bin = "gpm"
+where = "gpm.service on the console; libgpm is what vim, less, mc and links call"
+breaks = "no mouse at all on a tty, only the keyboard"
+
 [uses.stow]
 bin = "stow"
 where = "install.sh step 7, the only thing that puts configs in $HOME"

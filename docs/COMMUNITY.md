@@ -57,6 +57,19 @@ continuum, yank), [catppuccin/tmux](https://github.com/catppuccin/tmux),
 | nvm.fish | no | node comes from pacman; there is no nvm to manage |
 | Oh My Fish | no | a framework that owns `$fish_function_path` and fights fisher |
 
+## Mouse on a tty
+
+A virtual console has no mouse events: nothing on a VT emits the escape sequences
+a terminal emulator sends. `gpm` is the daemon that fills that gap, and it works
+through libgpm, so the console programs that link it get mouse support: vim, less,
+mc, links. tmux does not link libgpm and cannot: inside tmux on a tty the mouse
+stays dead, and that is a property of the console, not of the tmux config.
+
+It is an optional group (`tty`) rather than part of the terminal stack because gpm
+grabs `/dev/input/mice`. When it conflicts with the compositor's own input, the
+symptom is a touchpad that stutters or clicks by itself, and the fix is
+`systemctl disable --now gpm`.
+
 ## What this page changed
 
 Reading it against the configs produced exactly two additions, both of which

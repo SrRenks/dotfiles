@@ -150,6 +150,14 @@ _Binaries the terminal configs call: eza/zoxide/direnv (fish), fd/fzf (pickers),
 | `cava` | `cava` | services/Cava.qml runs it with glyph/cava/cava.conf; `cava` alias uses the dots profile | the bar's spectrum widget is empty |
 | `fastfetch` | `fastfetch` | stow/fastfetch config (hub); reddoted's copy is currently missing | fastfetch prints its stock output |
 
+## tty (`tty`)
+
+_Mouse on the virtual console. gpm serves the console apps that speak libgpm (vim, less, mc, links); tmux cannot use it, it needs escape sequences only a terminal emulator emits. Optional because gpm grabs /dev/input/mice: if the touchpad misbehaves in Hyprland, disable gpm again_
+
+| package | binary | called by | if absent |
+| --- | --- | --- | --- |
+| `gpm` | `gpm` | gpm.service on the console; libgpm is what vim, less, mc and links call | no mouse at all on a tty, only the keyboard |
+
 ## Fonts (`fonts`)
 
 _JetBrains Mono Nerd (glyphs in bar/yazi/eza), Space Mono (Glyph typeface, bundled in reddoted), CJK for kaomoji, emoji for Charms_
@@ -273,4 +281,4 @@ base system, or not shipped at all. These are the ones that break silently.
 | `chsh` | shadow (base) | install.sh wiring, asks before changing the login shell | fish stays a manual choice |
 | `hyprctl` | hyprland | 27 files, see the `hyprland` row above | duplicated here because it is called far more than anything else |
 
-84 of 84 package requirements documented.
+85 of 85 package requirements documented.

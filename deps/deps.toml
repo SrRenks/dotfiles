@@ -104,6 +104,12 @@ pacman = [
 ]
 
 [[group]]
+id = "tty"
+desc = "Mouse on the virtual console. gpm serves the console apps that speak libgpm (vim, less, mc, links); tmux cannot use it, it needs escape sequences only a terminal emulator emits. Optional because gpm grabs /dev/input/mice: if the touchpad misbehaves in Hyprland, disable gpm again"
+pacman = ["gpm"]
+services_system = ["gpm"]
+
+[[group]]
 id = "fonts"
 desc = "JetBrains Mono Nerd (glyphs in bar/yazi/eza), Space Mono (Glyph typeface, bundled in reddoted), CJK for kaomoji, emoji for Charms"
 pacman = ["ttf-jetbrains-mono-nerd", "noto-fonts", "noto-fonts-cjk", "noto-fonts-emoji"]
