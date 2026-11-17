@@ -26,8 +26,7 @@ command_timeout = 300
 # empty coloured band whenever a segment has nothing to say; one band cannot.
 format = """
 [](fg:blue)$directory\
-([](fg:blue bg:red)$git_branch$git_status$git_state$python$nodejs$rust$golang$docker_context$kubernetes$direnv[](fg:red) )
-$character"""
+([](fg:blue bg:red)$git_branch$git_status$git_state$python$nodejs$rust$golang$docker_context$kubernetes$direnv[](fg:red)) $character"""
 
 # ── right: what just happened ────────────────────────────────────────────────
 # Nothing here runs unless it has something true to say.
