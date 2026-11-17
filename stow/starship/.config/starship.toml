@@ -24,7 +24,11 @@ command_timeout = 300
 # One filled band for the directory, an arrow out of it, then plain context. The
 # popular powerline presets chain every segment unconditionally, which leaves an
 # empty coloured band whenever a segment has nothing to say; one band cannot.
-format = """[](bg:blue fg:black)$directory[](fg:blue) $git_branch$git_status$git_state$python$nodejs$rust$golang$docker_context$kubernetes$direnv$character"""
+format = """
+[](fg:blue bg:blue)$directory\
+( )(fg:blue bg:red)$git_branch$git_status$git_state$python$nodejs$rust$golang$docker_context$kubernetes$direnv\
+( )(fg:red)
+$character"""
 
 # ── right: what just happened ────────────────────────────────────────────────
 # Nothing here runs unless it has something true to say.
@@ -43,7 +47,7 @@ format = "$symbol "
 # ── directory ────────────────────────────────────────────────────────────────
 [directory]
 style = "fg:black bg:blue"
-format = "[ $path ]($style)[$read_only]($read_only_style)"
+format = "[ $path ]($style)"
 truncation_length = 3
 truncation_symbol = "…/"
 truncate_to_repo = true
@@ -58,13 +62,13 @@ home_symbol = "~"
 [git_branch]
 symbol = ""
 # The branch is the only coloured thing in the prompt. Nothing else competes.
-style = "red"
-format = "[$branch]($style) "
+style = "fg:white bg:red"
+format = "[ $branch ]($style)"
 truncation_symbol = "…/"
 
 [git_status]
-style = "bright-black"
-format = "([$all_status$ahead_behind]($style) )"
+style = "fg:black bg:red"
+format = "[$all_status ]($style)"
 conflicted = "="
 ahead = "⇡"
 behind = "⇣"
@@ -77,8 +81,8 @@ renamed = "»"
 deleted = "✘"
 
 [git_state]
-style = "red"
-format = '([\($state( $progress_current/$progress_total\))]($style) )'
+style = "fg:black bg:red"
+format = "[$state($progress_current/$progress_total) ]($style)"
 
 # Lines added/removed when you are in a repo. Costs one `git diff --shortstat`.
 [git_metrics]
@@ -93,8 +97,8 @@ format = '([+$added]($added_style) )([-$deleted]($deleted_style) )'
 # detect_files match. `version_format` keeps them to major.minor.
 [python]
 symbol = "py "
-style = "bright-black"
-format = '[${symbol}${pyenv_prefix}(${version} )(\($virtualenv\) )]($style)'
+style = "fg:bright-white bg:red"
+format = "[py $version ]($style)"
 version_format = "v${major}.${minor}"
 pyenv_version_name = false
 # Project markers only. A stray .py in $HOME made every prompt in the home
@@ -104,15 +108,15 @@ detect_files = ["pyproject.toml", "requirements.txt", "Pipfile", ".python-versio
 
 [nodejs]
 symbol = "js "
-style = "bright-black"
-format = "[$symbol($version )]($style)"
+style = "fg:bright-white bg:red"
+format = "[js $version ]($style)"
 version_format = "v${major}.${minor}"
 detect_files = ["package.json", "bun.lock", "bun.lockb", ".nvmrc", "node_modules"]
 
 [rust]
 symbol = "rs "
-style = "bright-black"
-format = "[$symbol($version )]($style)"
+style = "fg:bright-white bg:red"
+format = "[rs $version ]($style)"
 version_format = "v${major}.${minor}"
 # Same rule as python: a Cargo.toml is a Rust project, a stray .rs is not. It also
 # stops a rustc probe from running every prompt in a folder with one file.
@@ -121,20 +125,20 @@ detect_files = ["Cargo.toml"]
 
 [golang]
 symbol = "go "
-style = "bright-black"
-format = "[$symbol($version )]($style)"
+style = "fg:bright-white bg:red"
+format = "[go $version ]($style)"
 version_format = "v${major}.${minor}"
 
 [docker_context]
 symbol = "dk "
-style = "bright-black"
-format = "[$symbol($context )]($style)"
+style = "fg:bright-white bg:red"
+format = "[dk $context ]($style)"
 
 # Kubernetes context is red on purpose: the wrong cluster is an incident.
 [kubernetes]
 symbol = "k8s "
-style = "bold red"
-format = "[$symbol($context )]($style)"
+style = "fg:yellow bg:red"
+format = "[k8s $context ]($style)"
 disabled = false
 detect_files = []
 detect_extensions = []
@@ -144,8 +148,8 @@ context_aliases = {}
 # direnv is hooked in fish; this only reports that a .envrc is loaded.
 [direnv]
 disabled = false
-style = "bright-black"
-format = "[direnv]($style) "
+style = "fg:bright-white bg:red"
+format = "[env ]($style)"
 
 # ── right side ───────────────────────────────────────────────────────────────
 [status]
