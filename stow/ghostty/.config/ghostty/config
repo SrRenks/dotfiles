@@ -8,8 +8,12 @@
 # Reload: ctrl+shift+,   ·   validate: ghostty +validate-config
 
 # ── type ─────────────────────────────────────────────────────────────────────
-font-family = Space Mono
+# JetBrains Mono first: it is the one with the powerline blocks (U+E0B0 and
+# friends). Space Mono has no block or geometric glyph at all, so with it first
+# every band in the prompt ended in a box. Space Mono stays as the fallback for
+# anything JetBrains lacks.
 font-family = JetBrainsMono Nerd Font
+font-family = Space Mono
 font-size = 12
 adjust-cell-height = 8%
 # No ligatures: Space Mono has none, keep it honest.

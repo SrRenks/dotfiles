@@ -25,8 +25,8 @@ command_timeout = 300
 # popular powerline presets chain every segment unconditionally, which leaves an
 # empty coloured band whenever a segment has nothing to say; one band cannot.
 format = """
-[](fg:blue bg:blue)$directory\
-([»](fg:blue bg:red)$git_branch$git_status$git_state$python$nodejs$rust$golang$docker_context$kubernetes$direnv[»](fg:red) )\
+[](fg:blue)$directory\
+([](fg:blue bg:red)$git_branch$git_status$git_state$python$nodejs$rust$golang$docker_context$kubernetes$direnv[](fg:red) )\
 $character"""
 
 # ── right: what just happened ────────────────────────────────────────────────
